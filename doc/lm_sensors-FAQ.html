@@ -1435,6 +1435,7 @@ Up:&nbsp;<a rel="up" accesskey="u" href="#Problems">Problems</a>
 <li>Did you <span class="command">modprobe</span> your I2C adapter modules? 
 <li>Did you <span class="command">modprobe i2c-isa</span> if you have ISA sensor chips? 
 <li>Check <span class="command">lsmod</span>. 
+<li>If you are using Linux 2.6, did you insert both i2c-viapro and via686a? They conflict which each other, so don't load both together. 
 </ul>
 
 <div class="node">
