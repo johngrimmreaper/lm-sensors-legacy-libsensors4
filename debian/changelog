@@ -1,3 +1,12 @@
+lm-sensors (1:2.9.1-2) unstable; urgency=low
+
+  * Added Vietnamese debconf translation. Thanks to Clytie Siddall (closes:
+    bug#312510).
+  * Fixed a typo in the debconf template. Thanks to Clytie Siddall (closes:
+    bug#312511).
+
+ -- Aurelien Jarno <aurel32@debian.org>  Thu,  9 Jun 2005 01:17:29 +0200
+
 lm-sensors (1:2.9.1-1) unstable; urgency=low
 
   * New upstream version. 
