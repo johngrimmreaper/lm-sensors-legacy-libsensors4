@@ -10,8 +10,6 @@ clean:
 	
 	$(MAKE) clean PROG_EXTRA=sensord
 	
-	rm -f debian/lm-sensors-*.README.Debian
-	
 	rm -f *-stamp
 	dh_clean 
 
@@ -45,13 +43,13 @@ install-stamp: build
 	install -m 0644 debian/sensord.logcheck debian/sensord/etc/logcheck/ignore.d.workstation/sensord
 	install -m 0644 etc/sensors.conf.eg debian/lm-sensors/usr/share/lm-sensors/sensors.conf.eg
 
-	# Install isadump only if it has been built (on i386 archs only)
+	# Install isadump only if it has been built (on x86/x86_64 archs only)
 	if [ -x prog/dump/isadump ] ; then \
 	        cp -f prog/dump/isadump debian/lm-sensors/usr/sbin ; \
 		mkdir -p debian/lm-sensors/usr/share/man/man8 ; \
 	        cp -f prog/dump/isadump.8 debian/lm-sensors/usr/share/man/man8 ; \
 	fi
-	# Install isaset only if it has been built (on i386 archs only)
+	# Install isaset only if it has been built (on x86/x86_64 archs only)
 	if [ -x prog/dump/isaset ] ; then \
 	        cp -f prog/dump/isaset debian/lm-sensors/usr/sbin ; \
 		mkdir -p debian/lm-sensors/usr/share/man/man8 ; \

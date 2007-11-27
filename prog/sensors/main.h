@@ -1,7 +1,6 @@
 /*
-    chips.h - Part of sensors, a user-space program for hardware monitoring
-    Copyright (c) 1998, 1999  Frodo Looijaard <frodol@dds.nl>
-    Copyright (C) 2007        Jean Delvare <khali@linux-fr.org>
+    main.h - Part of sensors, a user-space program for hardware monitoring
+    Copyright (C) 2007       Jean Delvare <khali@linux-fr.org>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,12 +17,10 @@
     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
 
-#ifndef PROG_SENSORS_CHIPS_H
-#define PROG_SENSORS_CHIPS_H
+#ifndef PROG_SENSORS_MAIN_H
+#define PROG_SENSORS_MAIN_H
 
-#include "lib/sensors.h"
+extern int fahrenheit;
+extern char degstr[5];
 
-void print_chip_raw(const sensors_chip_name *name);
-void print_chip(const sensors_chip_name *name);
-
-#endif /* def PROG_SENSORS_CHIPS_H */
+#endif /* PROG_SENSORS_MAIN_H */

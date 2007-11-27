@@ -19,9 +19,10 @@
 # 'simply expanded variable'. That means that its value is substituted
 # verbatim in the rules, until it is redefined. 
 MODULE_DIR := etc
+ETC_DIR := $(MODULE_DIR)
 
 ETCTARGET := $(MODULE_DIR)/sensors.conf.eg
-ETCINSTALL := $(ETCDIR)/sensors.conf
+ETCINSTALL := $(ETCDIR)/sensors3.conf
 
 
 # No all rule
@@ -31,6 +32,14 @@ install-etc:
 	if [ ! -e $(DESTDIR)$(ETCINSTALL) ] ; then \
 	  $(INSTALL) -m 644 $(ETCTARGET) $(DESTDIR)$(ETCINSTALL); \
 	fi
+	$(MKDIR) $(DESTDIR)$(BINDIR)
+	$(INSTALL) -m 755 $(ETC_DIR)/sensors-conf-convert $(DESTDIR)$(BINDIR)
+
 user_install :: install-etc
+
+uninstall-etc:
+	$(RM) $(DESTDIR)$(BINDIR)/sensors-conf-convert
+
+user_uninstall :: uninstall-etc
 
 # No clean rule

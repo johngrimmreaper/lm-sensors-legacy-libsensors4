@@ -7,7 +7,13 @@ set -e
 
 case "$1" in
     configure)
-	ucf --debconf-ok --three-way /usr/share/lm-sensors/sensors.conf.eg /etc/sensors.conf
+        if [ -f /etc/sensors.conf ] && ! [ -f /etc/sensors3.conf ] ; then
+	    echo "Creating /etc/sensors3.conf from /etc/sensors.conf"
+	    ucf /usr/share/lm-sensors/sensors.conf.eg /etc/sensors3.conf
+	    /usr/bin/sensors-conf-convert < /etc/sensors.conf > /etc/sensors3.conf
+	else
+	    ucf --debconf-ok --three-way /usr/share/lm-sensors/sensors.conf.eg /etc/sensors3.conf
+	fi
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)

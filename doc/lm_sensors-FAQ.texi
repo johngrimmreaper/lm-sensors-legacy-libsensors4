@@ -561,14 +561,13 @@ to work.
 * Section 4.23::        What is at I2C address XXX?
 * Section 4.24::        Sensors-detect doesn't work at all
 * Section 4.25::        Sensors says @samp{Error: Line xxx: zzzzzzz}
-* Section 4.26::        Sensors only gives the name, adapter, and algorithm!
+* Section 4.26::        Sensors only gives the name and adapter!
 * Section 4.27::        Sensors says @samp{ERROR: Can't get xxxxx data!}
 * Section 4.28::        Sensors doesn't find any sensors, just eeproms.
 * Section 4.29::        Inserting modules hangs my board
 * Section 4.30::        Inserting modules slows down my board
 * Section 4.31::        Problems on particular motherboards
-* Section 4.32::        Problems on particular systems
-* Section 4.33::        Problems on 2.6 kernels
+* Section 4.32::        Problems on 2.6 kernels
 @end menu
 
 
@@ -716,9 +715,8 @@ and change the min and max settings for the Processor Core voltage
 (often in0_min and in0_max) in that file so that they don't depend on vid.
 
 The CPU nominal voltage is computed from VID lines according to a formula
-that depends on the CPU type. Most chips that report a VID value can be
-configured to use either VRM 8.2 (for Pentium III) or VRM 9.0 (for Pentium 4
-and Athlon). You chose which one you want through @file{/etc/sensors.conf}.
+that depends on the CPU type. Since Linux 2.6.9, the right formula is
+selected automatically.
 See @file{doc/vid} for more information.
 
 
@@ -1026,7 +1024,6 @@ and @command{mount /proc}.
 @item Did you @command{modprobe} your I2C adapter modules?
 @item Did you @command{modprobe i2c-isa} if you have ISA sensor chips?
 @item Check @command{lsmod}.
-@item If you are using Linux 2.6, did you insert both i2c-viapro and via686a? They conflict which each other, so don't load both together.
 @end itemize
 
 
@@ -1069,9 +1066,9 @@ avoids these chips, and you should do too.  You have been warned.
 @anchor{What is at I2C addresses 0x50 - 0x57}
 @subsection What is at I2C addresses 0x50 - 0x57?
 
-EEPROMs on your SDRAM DIMMs. Load the eeprom module to
-look at some basic data in @command{sensors} or use the program
-@command{prog/eeprom/decode-dimms.pl} to get more information than you ever wanted.
+EEPROMs on your SDRAM DIMMs. Load the eeprom module and use the script
+@command{decode-dimms.pl} (in the i2c-tools package)
+to get more information than you ever wanted.
 
 
 @anchor{What is at I2C addresses 0x30 - 0x37}
@@ -1105,7 +1102,7 @@ was not loaded and you did not run sensors-detect as root.
 
 Your @file{/dev/i2c-0,} @file{/dev/i2c0}, or @file{/dev/i2c/0} files do not exist
 or you did not run @command{sensors-detect} as root.
-Run the script @command{prog/mkdev/mkdev.sh} to create the @file{/dev/i2c-x} files.
+Use @command{MAKEDEV} or @command{mknod} to create the @file{/dev/i2c-x} files.
 Run @command{devfs} in the kernel to get the @file{/dev/i2c/x} files.
 
 
@@ -1141,7 +1138,7 @@ to put the feature name in double quotes.
 
 
 @node Section 4.26, Section 4.27, Section 4.25, Problems
-@section Sensors only gives the name, adapter, and algorithm for my chip
+@section Sensors only gives the name and adapter for my chip
 
 If @command{sensors} only says this, for example, and doesn't
 provide any actual data at all:
@@ -1149,7 +1146,6 @@ provide any actual data at all:
 @example
 it87-isa-0290
 Adapter: ISA adapter
-Algorithm: ISA algorithm
 @end example
 
 Your chip is not currently supported by @command{sensors} and so all it
@@ -1243,13 +1239,7 @@ For board hangs, see support ticket 721 for information.
 Also @ref{Section 4.29, Inserting modules hangs my board}.
 
 
-@node Section 4.32, Section 4.33, Section 4.31, Problems
-@section Problems on particular systems
-
-For IBM systems, see @file{README.thinkpad}.
-
-
-@node Section 4.33, , Section 4.32, Problems
+@node Section 4.32, , Section 4.31, Problems
 @section Problems on 2.6 kernels
 
 Not all drivers have been ported to 2.6. If your favorite driver is not
@@ -1281,7 +1271,7 @@ eeprom support for all Linux 2.6 kernels, as it didn't fit well in
 the library code in the first place.
 
 Note that you can still obtain information about your EEPROMs by using
-the dedicated perl scripts in @file{prog/eeprom}: @command{ddcmon},
+the dedicated perl scripts in the i2c-tools package: @command{ddcmon},
 @command{decode-dimms.pl}, @command{decode-edid.pl} and
 @command{decode-vaio.pl}.
 
@@ -1589,6 +1579,7 @@ will email you announcement.
 @appendix Revision History of This Document
 
 @itemize
+@item Rev 2.19 (JD) Removed 4.32 (Thinkpad-specific issues), 2007-09-24
 @item Rev 2.18 (JD) Removed version 1 specifics part, 2005-12-17
 @item Rev 2.17 (JD) Added 5.9 (why we don't support undocumented chips),
 	removed 6.9 (doesn't apply to the new mailing list), 2005-10-05
