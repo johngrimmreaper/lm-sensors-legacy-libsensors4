@@ -23,7 +23,7 @@
 .\"
 .\" References consulted:
 .\"     sensors.conf.eg by Frodo Looijaard
-.TH sensors.conf 5  "April 2007" "" "Linux User's Manual"
+.TH sensors.conf 5  "October 2007" "lm-sensors 3" "Linux User's Manual"
 .SH NAME
 sensors.conf \- libsensors configuration file
 
@@ -141,16 +141,9 @@ always be quoted.
 
 The second argument is the adapter name, it must match exactly the
 adapter name as it appears in
-.I /proc/bus/i2c
-(2.4 kernel)
-or
-.I /sys/class/i2c-adapter/i2c-*/device/name
-(2.6 kernel).
+.IR /sys/class/i2c-adapter/i2c-*/name .
 It should always be quoted as well as it will most certainly contain
 spaces or dashes.
-
-There used to be a third argument, the algorithm name. For compatibility
-reasons, the parser still accepts this third argument, but ignores it.
 
 The
 .I bus
@@ -161,9 +154,9 @@ all
 .I bus
 statements together at the top of your configuration file.
 
-The program
-.I prog/config/grab_busses.sh
-in the source distribution can help you generate these lines.
+Running
+.B sensors --bus-list
+will generate these lines for you.
 
 .SS CHIP STATEMENT
 
@@ -189,9 +182,7 @@ statement is ignored upto the next
 statement.
 
 A chip description is built from a couple of elements, separated by
-dashes. To complicate matters, sometimes an element can also contain
-dashes. This complicates the parsing algorithm, but is not too confusing
-for humans (we hope!).
+dashes.
 
 The first element is the name of the chip type. Sometimes a single driver
 implements several chip types, with several names. The driver documentation
@@ -219,10 +210,10 @@ the wildcard operator
 .I *
 for this element. 
 
-There are some folding rules for wildcards to make things easier for humans
-to read. Also, you can't specify the address if you wildcard the complete
-second element. The following are all valid chip type specification based
-on 
+Note that it wouldn't make any sense to specify the address without the
+bus type. For this reason, the address part is plain omitted when the bus
+type isn't specified.
+The following are all valid chip type specification based on
 .I lm78\-i2c\-1\-2d
 or
 .IR lm78\-isa\-0290 :
@@ -253,10 +244,6 @@ lm78\-*
 *\-isa\-0290
 .sp 0
 *\-isa\-*
-.sp 0
-*\-*
-.sp 0
-*
 .RE
 
 .SS COMPUTE STATEMENT
@@ -407,8 +394,16 @@ the feature is in the same class as the feature the statement contains,
 and there is anywhere else a statement for this specific class member,
 that one takes always precedence.
 
-.SH "CONFORMING TO"
-lm_sensors-2.x
+.SH FILES
+.I /etc/sensors3.conf
+.br
+.I /etc/sensors.conf
+.RS
+The system-wide
+.BR libsensors (3)
+configuration file. /etc/sensors3.conf is tried first, and if it doesn't exist,
+/etc/sensors.conf is used instead.
+
 .SH SEE ALSO
 libsensors(3)
 

@@ -152,7 +152,7 @@ Jean Delvare<br>
 <li><a href="#Section-4_002e24">4.24.3 Sensors-detect doesn't find any sensors!</a>
 </li></ul>
 <li><a href="#Section-4_002e25">4.25 Sensors says `<samp><span class="samp">Error: Line xxx: zzzzzzz</span></samp>'</a>
-<li><a href="#Section-4_002e26">4.26 Sensors only gives the name, adapter, and algorithm for my chip</a>
+<li><a href="#Section-4_002e26">4.26 Sensors only gives the name and adapter for my chip</a>
 <li><a href="#Section-4_002e27">4.27 Sensors says `<samp><span class="samp">ERROR: Can't get xxxxx data!</span></samp>'</a>
 <li><a href="#Section-4_002e28">4.28 Sensors doesn't find any sensors, just eeproms.</a>
 <li><a href="#Section-4_002e29">4.29 Inserting modules hangs my board</a>
@@ -164,11 +164,10 @@ Jean Delvare<br>
 <li><a href="#Section-4_002e31">4.31.3 Tyan 2466</a>
 <li><a href="#Section-4_002e31">4.31.4 Tyan 2688</a>
 </li></ul>
-<li><a href="#Section-4_002e32">4.32 Problems on particular systems</a>
-<li><a href="#Section-4_002e33">4.33 Problems on 2.6 kernels</a>
+<li><a href="#Section-4_002e32">4.32 Problems on 2.6 kernels</a>
 <ul>
-<li><a href="#Section-4_002e33">4.33.1 i2c-viapro and via686a</a>
-<li><a href="#Section-4_002e33">4.33.2 Where are my EEPROMs?</a>
+<li><a href="#Section-4_002e32">4.32.1 i2c-viapro and via686a</a>
+<li><a href="#Section-4_002e32">4.32.2 Where are my EEPROMs?</a>
 </li></ul>
 </li></ul>
 <li><a name="toc_Help" href="#Help">5 How to Ask for Help</a>
@@ -897,14 +896,13 @@ Up:&nbsp;<a rel="up" accesskey="u" href="#Top">Top</a>
 <li><a href="#Section-4_002e23">Section 4.23</a>:         What is at I2C address XXX? 
 <li><a href="#Section-4_002e24">Section 4.24</a>:         Sensors-detect doesn't work at all
 <li><a href="#Section-4_002e25">Section 4.25</a>:         Sensors says `<samp><span class="samp">Error: Line xxx: zzzzzzz</span></samp>'
-<li><a href="#Section-4_002e26">Section 4.26</a>:         Sensors only gives the name, adapter, and algorithm! 
+<li><a href="#Section-4_002e26">Section 4.26</a>:         Sensors only gives the name and adapter! 
 <li><a href="#Section-4_002e27">Section 4.27</a>:         Sensors says `<samp><span class="samp">ERROR: Can't get xxxxx data!</span></samp>'
 <li><a href="#Section-4_002e28">Section 4.28</a>:         Sensors doesn't find any sensors, just eeproms. 
 <li><a href="#Section-4_002e29">Section 4.29</a>:         Inserting modules hangs my board
 <li><a href="#Section-4_002e30">Section 4.30</a>:         Inserting modules slows down my board
 <li><a href="#Section-4_002e31">Section 4.31</a>:         Problems on particular motherboards
-<li><a href="#Section-4_002e32">Section 4.32</a>:         Problems on particular systems
-<li><a href="#Section-4_002e33">Section 4.33</a>:         Problems on 2.6 kernels
+<li><a href="#Section-4_002e32">Section 4.32</a>:         Problems on 2.6 kernels
 </ul>
 
 <div class="node">
@@ -1106,9 +1104,8 @@ and change the min and max settings for the Processor Core voltage
 (often in0_min and in0_max) in that file so that they don't depend on vid.
 
    <p>The CPU nominal voltage is computed from VID lines according to a formula
-that depends on the CPU type. Most chips that report a VID value can be
-configured to use either VRM 8.2 (for Pentium III) or VRM 9.0 (for Pentium 4
-and Athlon). You chose which one you want through <samp><span class="file">/etc/sensors.conf</span></samp>. 
+that depends on the CPU type. Since Linux 2.6.9, the right formula is
+selected automatically. 
 See <samp><span class="file">doc/vid</span></samp> for more information.
 
 <div class="node">
@@ -1581,9 +1578,9 @@ avoids these chips, and you should do too.  You have been warned.
 
 <h4 class="subsection">4.23.2 What is at I2C addresses 0x50 - 0x57?</h4>
 
-<p>EEPROMs on your SDRAM DIMMs. Load the eeprom module to
-look at some basic data in <samp><span class="command">sensors</span></samp> or use the program
-<samp><span class="command">prog/eeprom/decode-dimms.pl</span></samp> to get more information than you ever wanted.
+<p>EEPROMs on your SDRAM DIMMs. Load the eeprom module and use the script
+<samp><span class="command">decode-dimms.pl</span></samp> (in the i2c-tools package)
+to get more information than you ever wanted.
 
    <p><a name="What-is-at-I2C-addresses-0x30-_002d-0x37"></a>
 
@@ -1625,7 +1622,7 @@ was not loaded and you did not run sensors-detect as root.
 
 <p>Your <samp><span class="file">/dev/i2c-0,</span></samp> <samp><span class="file">/dev/i2c0</span></samp>, or <samp><span class="file">/dev/i2c/0</span></samp> files do not exist
 or you did not run <samp><span class="command">sensors-detect</span></samp> as root. 
-Run the script <samp><span class="command">prog/mkdev/mkdev.sh</span></samp> to create the <samp><span class="file">/dev/i2c-x</span></samp> files. 
+Use <samp><span class="command">MAKEDEV</span></samp> or <samp><span class="command">mknod</span></samp> to create the <samp><span class="file">/dev/i2c-x</span></samp> files. 
 Run <samp><span class="command">devfs</span></samp> in the kernel to get the <samp><span class="file">/dev/i2c/x</span></samp> files.
 
    <p><a name="Sensors_002ddetect-doesnt-find-any-sensors"></a>
@@ -1677,14 +1674,13 @@ Up:&nbsp;<a rel="up" accesskey="u" href="#Problems">Problems</a>
 
 </div>
 
-<h3 class="section">4.26 Sensors only gives the name, adapter, and algorithm for my chip</h3>
+<h3 class="section">4.26 Sensors only gives the name and adapter for my chip</h3>
 
 <p>If <samp><span class="command">sensors</span></samp> only says this, for example, and doesn't
 provide any actual data at all:
 
 <pre class="example">     it87-isa-0290
      Adapter: ISA adapter
-     Algorithm: ISA algorithm
 </pre>
    <p>Your chip is not currently supported by <samp><span class="command">sensors</span></samp> and so all it
 does is print out that information. Get the latest release
@@ -1819,26 +1815,12 @@ Also <a href="#Section-4_002e29">Inserting modules hangs my board</a>.
 <p><hr>
 <a name="Section-4.32"></a>
 <a name="Section-4_002e32"></a>
-Next:&nbsp;<a rel="next" accesskey="n" href="#Section-4_002e33">Section 4.33</a>,
 Previous:&nbsp;<a rel="previous" accesskey="p" href="#Section-4_002e31">Section 4.31</a>,
 Up:&nbsp;<a rel="up" accesskey="u" href="#Problems">Problems</a>
 
 </div>
 
-<h3 class="section">4.32 Problems on particular systems</h3>
-
-<p>For IBM systems, see <samp><span class="file">README.thinkpad</span></samp>.
-
-<div class="node">
-<p><hr>
-<a name="Section-4.33"></a>
-<a name="Section-4_002e33"></a>
-Previous:&nbsp;<a rel="previous" accesskey="p" href="#Section-4_002e32">Section 4.32</a>,
-Up:&nbsp;<a rel="up" accesskey="u" href="#Problems">Problems</a>
-
-</div>
-
-<h3 class="section">4.33 Problems on 2.6 kernels</h3>
+<h3 class="section">4.32 Problems on 2.6 kernels</h3>
 
 <p>Not all drivers have been ported to 2.6. If your favorite driver is not
 in 2.6, the reason is that nobody has ported it, or the ported code did
@@ -1847,7 +1829,7 @@ If you would like to port the driver, see the file
 Documentation/i2c/porting-clients in the 2.6 kernel tree for help,
 then send us the ported driver when you are done.
 
-<h4 class="subsection">4.33.1 i2c-viapro and via686a</h4>
+<h4 class="subsection">4.32.1 i2c-viapro and via686a</h4>
 
 <p>Until kernel 2.6.11, there was a PCI resource conflict between
 i2c-viapro (the SMBus driver for VIA bridges) and via686a (the integrated
@@ -1855,7 +1837,7 @@ sensors driver for VIA bridges). This caused the second loaded driver to
 silently fail working. So do not load both i2c-viapro and via686a together
 unless you have a recent kernel.
 
-<h4 class="subsection">4.33.2 Where are my EEPROMs?</h4>
+<h4 class="subsection">4.32.2 Where are my EEPROMs?</h4>
 
 <p>The 2.6.14-rc1 kernel introduced the hwmon class, which groups all
 hardware monitoring drivers in a logical way. The goal was to help
@@ -1871,7 +1853,7 @@ eeprom support for all Linux 2.6 kernels, as it didn't fit well in
 the library code in the first place.
 
    <p>Note that you can still obtain information about your EEPROMs by using
-the dedicated perl scripts in <samp><span class="file">prog/eeprom</span></samp>: <samp><span class="command">ddcmon</span></samp>,
+the dedicated perl scripts in the i2c-tools package: <samp><span class="command">ddcmon</span></samp>,
 <samp><span class="command">decode-dimms.pl</span></samp>, <samp><span class="command">decode-edid.pl</span></samp> and
 <samp><span class="command">decode-vaio.pl</span></samp>.
 

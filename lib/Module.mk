@@ -30,10 +30,9 @@ LIBMAN5FILES := $(MODULE_DIR)/sensors.conf.5
 # The main and minor version of the library
 # The library soname (major number) must be changed if and only if the interface is
 # changed in a backward incompatible way.  The interface is defined by
-# the public header files - in this case they are error.h, sensors.h,
-# chips.h.
-LIBMAINVER := 3
-LIBMINORVER := 1.4
+# the public header files - in this case they are error.h and sensors.h.
+LIBMAINVER := 4
+LIBMINORVER := 0.0
 LIBVER := $(LIBMAINVER).$(LIBMINORVER)
 
 # The static lib name, the shared lib name, and the internal ('so') name of
@@ -47,12 +46,8 @@ LIBTARGETS := $(MODULE_DIR)/$(LIBSTLIBNAME) $(MODULE_DIR)/$(LIBSHLIBNAME) \
               $(MODULE_DIR)/$(LIBSHSONAME) $(MODULE_DIR)/$(LIBSHBASENAME)
 
 LIBCSOURCES := $(MODULE_DIR)/data.c $(MODULE_DIR)/general.c \
-               $(MODULE_DIR)/error.c $(MODULE_DIR)/chips.c \
-               $(MODULE_DIR)/proc.c $(MODULE_DIR)/access.c \
-               $(MODULE_DIR)/init.c
-ifdef SYSFS_SUPPORT
-	LIBCSOURCES := $(LIBCSOURCES) $(MODULE_DIR)/sysfs.c
-endif
+               $(MODULE_DIR)/error.c $(MODULE_DIR)/access.c \
+               $(MODULE_DIR)/init.c $(MODULE_DIR)/sysfs.c
 
 LIBOTHEROBJECTS := $(MODULE_DIR)/conf-parse.o $(MODULE_DIR)/conf-lex.o
 LIBSHOBJECTS := $(LIBCSOURCES:.c=.lo) $(LIBOTHEROBJECTS:.o=.lo)
@@ -60,17 +55,11 @@ LIBSTOBJECTS := $(LIBCSOURCES:.c=.ao) $(LIBOTHEROBJECTS:.o=.ao)
 LIBEXTRACLEAN := $(MODULE_DIR)/conf-parse.h $(MODULE_DIR)/conf-parse.c \
                  $(MODULE_DIR)/conf-lex.c
 
-LIBHEADERFILES := $(MODULE_DIR)/error.h $(MODULE_DIR)/sensors.h \
-                  $(MODULE_DIR)/chips.h
+LIBHEADERFILES := $(MODULE_DIR)/error.h $(MODULE_DIR)/sensors.h
 
 # How to create the shared library
-ifdef SYSFS_SUPPORT
 $(MODULE_DIR)/$(LIBSHLIBNAME): $(LIBSHOBJECTS)
 	$(CC) -shared -Wl,-soname,$(LIBSHSONAME) -o $@ $^ -lc -lm -lsysfs
-else
-$(MODULE_DIR)/$(LIBSHLIBNAME): $(LIBSHOBJECTS)
-	$(CC) -shared -Wl,-soname,$(LIBSHSONAME) -o $@ $^ -lc -lm
-endif
 
 $(MODULE_DIR)/$(LIBSHSONAME): $(MODULE_DIR)/$(LIBSHLIBNAME)
 	$(RM) $@
@@ -96,10 +85,18 @@ $(MODULE_DIR)/conf-parse.h: $(MODULE_DIR)/conf-parse.c
 INCLUDEFILES += $(LIBCSOURCES:.c=.ld) $(LIBCSOURCES:.c=.ad)
 
 # Special warning prevention for flex-generated files
+FLEXNOWARN:=-Wno-shadow -Wno-undef -Wno-unused -Wno-missing-prototypes -Wno-sign-compare
 $(MODULE_DIR)/conf-lex.ao: $(MODULE_DIR)/conf-lex.c
-	$(CC) $(ARCPPFLAGS) $(ARCFLAGS) -Wno-unused -c $< -o $@
+	$(CC) $(ARCPPFLAGS) $(ARCFLAGS) $(FLEXNOWARN) -c $< -o $@
 $(MODULE_DIR)/conf-lex.lo: $(MODULE_DIR)/conf-lex.c
-	$(CC) $(LIBCPPFLAGS) $(LIBCFLAGS) -Wno-unused -c $< -o $@
+	$(CC) $(LIBCPPFLAGS) $(LIBCFLAGS) $(FLEXNOWARN) -c $< -o $@
+
+# Special warning prevention for bison-generated files
+YACCNOWARN:=-Wno-undef
+$(MODULE_DIR)/conf-parse.ao: $(MODULE_DIR)/conf-parse.c
+	$(CC) $(ARCPPFLAGS) $(ARCFLAGS) $(YACCNOWARN) -c $< -o $@
+$(MODULE_DIR)/conf-parse.lo: $(MODULE_DIR)/conf-parse.c
+	$(CC) $(LIBCPPFLAGS) $(LIBCFLAGS) $(YACCNOWARN) -c $< -o $@
 
 REMOVELIBST := $(patsubst $(MODULE_DIR)/%,$(DESTDIR)$(LIBDIR)/%,$(LIB_DIR)/$(LIBSTLIBNAME))
 REMOVELIBSH := $(patsubst $(MODULE_DIR)/%,$(DESTDIR)$(LIBDIR)/%,$(LIB_DIR)/$(LIBSHLIBNAME))

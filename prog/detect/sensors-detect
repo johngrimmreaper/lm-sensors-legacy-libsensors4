@@ -47,7 +47,7 @@ foreach ('/usr/sbin', '/usr/local/sbin', '/sbin') {
 use vars qw(@pci_adapters @chip_ids $i2c_addresses_to_scan @superio_ids
             @cpu_ids $revision);
 
-$revision = '$Revision: 4966 $ ($Date: 2007-10-20 01:41:53 -0700 (Sat, 20 Oct 2007) $)';
+$revision = '$Revision: 5016 $ ($Date: 2007-11-11 22:20:16 +0100 (dim, 11 nov 2007) $)';
 $revision =~ s/\$\w+: (.*?) \$/$1/g;
 $revision =~ s/ \([^()]*\)//;
 
@@ -760,7 +760,7 @@ use vars qw(@pci_adapters_sis5595 @pci_adapters_sis645 @pci_adapters_sis96x);
      {
        name => "National Semiconductor LM78",
        driver => "lm78",
-       i2c_addrs => [0x20..0x2f], 
+       i2c_addrs => [0x28..0x2f], 
        i2c_detect => sub { lm78_detect(0, @_); },
        isa_addrs => [0x290],
        isa_detect => sub { lm78_isa_detect(0, @_); },
@@ -769,7 +769,7 @@ use vars qw(@pci_adapters_sis5595 @pci_adapters_sis645 @pci_adapters_sis96x);
      {
        name => "National Semiconductor LM78-J",
        driver => "lm78",
-       i2c_addrs => [0x20..0x2f], 
+       i2c_addrs => [0x28..0x2f], 
        i2c_detect => sub { lm78_detect(1, @_); },
        isa_addrs => [0x290],
        isa_detect => sub { lm78_isa_detect(1, @_); },
@@ -778,7 +778,7 @@ use vars qw(@pci_adapters_sis5595 @pci_adapters_sis645 @pci_adapters_sis96x);
      {
        name => "National Semiconductor LM79",
        driver => "lm78",
-       i2c_addrs => [0x20..0x2f], 
+       i2c_addrs => [0x28..0x2f], 
        i2c_detect => sub { lm78_detect(2, @_); },
        isa_addrs => [0x290],
        isa_detect => sub { lm78_isa_detect(2, @_); },
@@ -910,7 +910,7 @@ use vars qw(@pci_adapters_sis5595 @pci_adapters_sis645 @pci_adapters_sis96x);
        name => "Winbond W83781D",
        driver => "w83781d",
        i2c_detect => sub { w83781d_detect(0, @_); },
-       i2c_addrs => [0x20..0x2f], 
+       i2c_addrs => [0x28..0x2f], 
        isa_addrs => [0x290],
        isa_detect => sub { w83781d_isa_detect(0, @_); },
        alias_detect => sub { w83781d_alias_detect(0, @_); },
@@ -918,7 +918,7 @@ use vars qw(@pci_adapters_sis5595 @pci_adapters_sis645 @pci_adapters_sis96x);
      {
        name => "Winbond W83782D",
        driver => "w83781d",
-       i2c_addrs => [0x20..0x2f], 
+       i2c_addrs => [0x28..0x2f], 
        i2c_detect => sub { w83781d_detect(1, @_); },
        isa_addrs => [0x290],
        isa_detect => sub { w83781d_isa_detect(1, @_); },
@@ -1237,6 +1237,12 @@ use vars qw(@pci_adapters_sis5595 @pci_adapters_sis645 @pci_adapters_sis96x);
        i2c_detect => sub { lm90_detect(8, @_); },
      },
      {
+       name => "Texas Instruments TMP401",
+       driver => "tmp401",
+       i2c_addrs => [0x4c],
+       i2c_detect => sub { lm90_detect(9, @_); },
+     },
+     {
        name => "National Semiconductor LM63",
        driver => "lm63",
        i2c_addrs => [0x4c],
@@ -1421,13 +1427,13 @@ use vars qw(@pci_adapters_sis5595 @pci_adapters_sis645 @pci_adapters_sis96x);
      },
      {
        name => "Fintek F75373S/SG",
-       driver => "to-be-written",
+       driver => "f75375s",
        i2c_addrs => [0x2d..0x2e],
        i2c_detect => sub { fintek_detect(3, @_); },
      },
      {
        name => "Fintek F75375S/SP",
-       driver => "to-be-written",
+       driver => "f75375s",
        i2c_addrs => [0x2d..0x2e],
        i2c_detect => sub { fintek_detect(4, @_); },
      },
@@ -1788,6 +1794,11 @@ use vars qw(@chip_kern24_ids @chip_kern26_ids
 	name => "SMSC LPC47B357/M967 Super IO",
 	driver => "not-a-sensor",
 	devid => 0x5d,
+      },
+      {
+	name => "SMSC LPC47B367-NC Super IO",
+	driver => "not-a-sensor",
+	devid => 0x6d,
       },
       {
 	name => "SMSC LPC47B37x Super IO Fan Sensors",
@@ -2321,7 +2332,7 @@ sub initialize_conf
     if (-c '/dev/i2c-0') {
       $dev_i2c = '/dev/i2c-';
     } else { # default
-      print "No i2c device files found. Use prog/mkdev/mkdev.sh to create them.\n";
+      print "No i2c device files found.\n";
       exit -1;
     }
   }
@@ -3905,7 +3916,7 @@ sub lm83_detect
 # $_[0]: Chip to detect
 #   (0 = LM90, 1=LM89/LM99, 2=LM86, 3=ADM1032, 4=MAX6657/MAX6658/MAX6659,
 #    5 = ADT7461, 6 = MAX6648/MAX6692, 7 = MAX6680/MAX6681,
-#    8 = W83L771W/G)
+#    8 = W83L771W/G), 9 = TI TMP401
 # $_[1]: A reference to the file descriptor to access this chip.
 # $_[2]: Address
 # Returns: undef if not detected, 4, 6 or 8 if detected.
@@ -3985,6 +3996,13 @@ sub lm90_detect
     return if $rate > 0x09;
     return if $mid != 0x5c;     # Winbond
     return if $cid != 0x00;     # W83L771W/G
+    return 6;
+  }
+  if ($chip == 9) {
+    return if ($conf & 0x1B) != 0;
+    return if $rate > 0x0F;
+    return if $mid != 0x55;     # Texas Instruments
+    return if $cid != 0x11;     # TMP401
     return 6;
   }
   return;

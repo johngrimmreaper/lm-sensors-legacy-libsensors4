@@ -1,6 +1,7 @@
 /*
     sysfs.h - part of libsensors, a library for reading Linux sensor data
-    Copyright (C) Mark M. Hoffman <mhoffman@lightlink.com>
+    Copyright (C)             Mark M. Hoffman <mhoffman@lightlink.com>
+    Copyright (C) 2007        Jean Delvare <khali@linux-fr.org>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,24 +21,22 @@
 #ifndef SENSORS_LIB_SYSFS_H
 #define SENSORS_LIB_SYSFS_H
 
-#ifdef SYSFS_SUPPORT
-extern int sensors_found_sysfs;
-
 extern char sensors_sysfs_mount[];
 
-extern int sensors_init_sysfs(void);
+int sensors_init_sysfs(void);
 
-extern int sensors_read_sysfs_chips(void);
+int sensors_read_sysfs_chips(void);
 
-extern int sensors_read_sysfs_bus(void);
+int sensors_read_sysfs_bus(void);
 
-#else
+/* Read a value out of a sysfs attribute file */
+int sensors_read_sysfs_attr(const sensors_chip_name *name,
+			    const sensors_subfeature *subfeature,
+			    double *value);
 
-#define sensors_found_sysfs 0
-#define sensors_init_sysfs() 0
-#define sensors_read_sysfs_chips() (-1)
-#define sensors_read_sysfs_bus() (-1)
-
-#endif
+/* Write a value to a sysfs attribute file */
+int sensors_write_sysfs_attr(const sensors_chip_name *name,
+			     const sensors_subfeature *subfeature,
+			     double value);
 
 #endif /* !SENSORS_LIB_SYSFS_H */

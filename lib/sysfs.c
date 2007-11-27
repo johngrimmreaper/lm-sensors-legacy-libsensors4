@@ -1,6 +1,7 @@
 /*
     sysfs.c - Part of libsensors, a library for reading Linux sensor data
     Copyright (c) 2005 Mark M. Hoffman <mhoffman@lightlink.com>
+    Copyright (C) 2007 Jean Delvare <khali@linux-fr.org>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,6 +21,9 @@
 /* this define needed for strndup() */
 #define _GNU_SOURCE
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
 #include <limits.h>
@@ -31,57 +35,346 @@
 #include "general.h"
 #include "sysfs.h"
 
-int sensors_found_sysfs = 0;
-
 char sensors_sysfs_mount[NAME_MAX];
+
+#define MAX_SENSORS_PER_TYPE	20
+#define MAX_SUBFEATURES		8
+/* Room for all 3 types (in, fan, temp) with all their subfeatures + VID
+   + misc features */
+#define ALL_POSSIBLE_SUBFEATURES \
+				(MAX_SENSORS_PER_TYPE * MAX_SUBFEATURES * 6 \
+				 + MAX_SENSORS_PER_TYPE + 1)
+
+static
+int get_type_scaling(sensors_subfeature_type type)
+{
+	switch (type & 0xFF80) {
+	case SENSORS_SUBFEATURE_IN_INPUT:
+	case SENSORS_SUBFEATURE_TEMP_INPUT:
+		return 1000;
+	case SENSORS_SUBFEATURE_FAN_INPUT:
+		return 1;
+	}
+
+	switch (type) {
+	case SENSORS_SUBFEATURE_VID:
+	case SENSORS_SUBFEATURE_TEMP_OFFSET:
+		return 1000;
+	default:
+		return 1;
+	}
+}
+
+static
+char *get_feature_name(sensors_feature_type ftype, char *sfname)
+{
+	char *name, *underscore;
+
+	switch (ftype) {
+	case SENSORS_FEATURE_IN:
+	case SENSORS_FEATURE_FAN:
+	case SENSORS_FEATURE_TEMP:
+		underscore = strchr(sfname, '_');
+		name = strndup(sfname, underscore - sfname);
+		break;
+	default:
+		name = strdup(sfname);
+	}
+
+	return name;
+}
+
+/* Static mappings for use by sensors_subfeature_get_type() */
+struct subfeature_type_match
+{
+	const char *name;
+	sensors_subfeature_type type;
+};
+
+struct feature_type_match
+{
+	const char *name;
+	const struct subfeature_type_match *submatches;
+};
+
+static const struct subfeature_type_match temp_matches[] = {
+	{ "input", SENSORS_SUBFEATURE_TEMP_INPUT },
+	{ "max", SENSORS_SUBFEATURE_TEMP_MAX },
+	{ "max_hyst", SENSORS_SUBFEATURE_TEMP_MAX_HYST },
+	{ "min", SENSORS_SUBFEATURE_TEMP_MIN },
+	{ "crit", SENSORS_SUBFEATURE_TEMP_CRIT },
+	{ "crit_hyst", SENSORS_SUBFEATURE_TEMP_CRIT_HYST },
+	{ "alarm", SENSORS_SUBFEATURE_TEMP_ALARM },
+	{ "min_alarm", SENSORS_SUBFEATURE_TEMP_MIN_ALARM },
+	{ "max_alarm", SENSORS_SUBFEATURE_TEMP_MAX_ALARM },
+	{ "crit_alarm", SENSORS_SUBFEATURE_TEMP_CRIT_ALARM },
+	{ "fault", SENSORS_SUBFEATURE_TEMP_FAULT },
+	{ "type", SENSORS_SUBFEATURE_TEMP_TYPE },
+	{ "offset", SENSORS_SUBFEATURE_TEMP_OFFSET },
+	{ NULL, 0 }
+};
+
+static const struct subfeature_type_match in_matches[] = {
+	{ "input", SENSORS_SUBFEATURE_IN_INPUT },
+	{ "min", SENSORS_SUBFEATURE_IN_MIN },
+	{ "max", SENSORS_SUBFEATURE_IN_MAX },
+	{ "alarm", SENSORS_SUBFEATURE_IN_ALARM },
+	{ "min_alarm", SENSORS_SUBFEATURE_IN_MIN_ALARM },
+	{ "max_alarm", SENSORS_SUBFEATURE_IN_MAX_ALARM },
+	{ NULL, 0 }
+};
+
+static const struct subfeature_type_match fan_matches[] = {
+	{ "input", SENSORS_SUBFEATURE_FAN_INPUT },
+	{ "min", SENSORS_SUBFEATURE_FAN_MIN },
+	{ "div", SENSORS_SUBFEATURE_FAN_DIV },
+	{ "alarm", SENSORS_SUBFEATURE_FAN_ALARM },
+	{ "fault", SENSORS_SUBFEATURE_FAN_FAULT },
+	{ NULL, 0 }
+};
+
+static const struct subfeature_type_match cpu_matches[] = {
+	{ "vid", SENSORS_SUBFEATURE_VID },
+	{ NULL, 0 }
+};
+
+static struct feature_type_match matches[] = {
+	{ "temp%d%c", temp_matches },
+	{ "in%d%c", in_matches },
+	{ "fan%d%c", fan_matches },
+	{ "cpu%d%c", cpu_matches },
+};
+
+/* Return the subfeature type and channel number based on the subfeature
+   name */
+static
+sensors_subfeature_type sensors_subfeature_get_type(const char *name, int *nr)
+{
+	char c;
+	int i, count;
+	const struct subfeature_type_match *submatches;
+
+	/* Special case */
+	if (!strcmp(name, "beep_enable")) {
+		*nr = 0;
+		return SENSORS_SUBFEATURE_BEEP_ENABLE;
+	}
+
+	for (i = 0; i < ARRAY_SIZE(matches); i++)
+		if ((count = sscanf(name, matches[i].name, nr, &c)))
+			break;
+
+	if (i == ARRAY_SIZE(matches) || count != 2 || c != '_')
+		return SENSORS_SUBFEATURE_UNKNOWN;  /* no match */
+
+	submatches = matches[i].submatches;
+	name = strchr(name + 3, '_') + 1;
+	for (i = 0; submatches[i].name != NULL; i++)
+		if (!strcmp(name, submatches[i].name))
+			return submatches[i].type;
+
+	return SENSORS_SUBFEATURE_UNKNOWN;
+}
+
+static int sensors_read_dynamic_chip(sensors_chip_features *chip,
+				     struct sysfs_device *sysdir)
+{
+	int i, fnum = 0, sfnum = 0, prev_slot;
+	struct sysfs_attribute *attr;
+	struct dlist *attrs;
+	sensors_subfeature *all_subfeatures;
+	sensors_subfeature *dyn_subfeatures;
+	sensors_feature *dyn_features;
+	sensors_feature_type ftype;
+	sensors_subfeature_type sftype;
+
+	attrs = sysfs_get_device_attributes(sysdir);
+
+	if (attrs == NULL)
+		return -ENOENT;
+
+	/* We use a large sparse table at first to store all found
+	   subfeatures, so that we can store them sorted at type and index
+	   and then later create a dense sorted table. */
+	all_subfeatures = calloc(ALL_POSSIBLE_SUBFEATURES,
+				 sizeof(sensors_subfeature));
+	if (!all_subfeatures)
+		sensors_fatal_error(__FUNCTION__, "Out of memory");
+
+	dlist_for_each_data(attrs, attr, struct sysfs_attribute) {
+		char *name = attr->name;
+		int nr;
+
+		sftype = sensors_subfeature_get_type(name, &nr);
+		if (sftype == SENSORS_SUBFEATURE_UNKNOWN)
+			continue;
+
+		/* Adjust the channel number */
+		switch (sftype & 0xFF00) {
+			case SENSORS_SUBFEATURE_FAN_INPUT:
+			case SENSORS_SUBFEATURE_TEMP_INPUT:
+				nr--;
+				break;
+		}
+
+		if (nr < 0 || nr >= MAX_SENSORS_PER_TYPE) {
+			/* More sensors of one type than MAX_SENSORS_PER_TYPE,
+			   we have to ignore it */
+#ifdef DEBUG
+			sensors_fatal_error(__FUNCTION__,
+					    "Increase MAX_SENSORS_PER_TYPE!");
+#endif
+			continue;
+		}
+
+		/* "calculate" a place to store the subfeature in our sparse,
+		   sorted table */
+		switch (sftype) {
+		case SENSORS_SUBFEATURE_VID:
+			i = nr + MAX_SENSORS_PER_TYPE * MAX_SUBFEATURES * 6;
+			break;
+		case SENSORS_SUBFEATURE_BEEP_ENABLE:
+			i = MAX_SENSORS_PER_TYPE * MAX_SUBFEATURES * 6 +
+			    MAX_SENSORS_PER_TYPE;
+			break;
+		default:
+			i = (sftype >> 8) * MAX_SENSORS_PER_TYPE *
+			    MAX_SUBFEATURES * 2 + nr * MAX_SUBFEATURES * 2 +
+			    ((sftype & 0x80) >> 7) * MAX_SUBFEATURES +
+			    (sftype & 0x7F);
+		}
+
+		if (all_subfeatures[i].name) {
+#ifdef DEBUG
+			sensors_fatal_error(__FUNCTION__,
+					    "Duplicate subfeature");
+#endif
+			continue;
+		}
+
+		/* fill in the subfeature members */
+		all_subfeatures[i].type = sftype;
+		all_subfeatures[i].name = strdup(name);
+		if (!(sftype & 0x80))
+			all_subfeatures[i].flags |= SENSORS_COMPUTE_MAPPING;
+		if (attr->method & SYSFS_METHOD_SHOW)
+			all_subfeatures[i].flags |= SENSORS_MODE_R;
+		if (attr->method & SYSFS_METHOD_STORE)
+			all_subfeatures[i].flags |= SENSORS_MODE_W;
+
+		sfnum++;
+	}
+
+	if (!sfnum) { /* No subfeature */
+		chip->subfeature = NULL;
+		goto exit_free;
+	}
+
+	/* How many main features? */
+	prev_slot = -1;
+	for (i = 0; i < ALL_POSSIBLE_SUBFEATURES; i++) {
+		if (!all_subfeatures[i].name)
+			continue;
+
+		if (i >= MAX_SENSORS_PER_TYPE * MAX_SUBFEATURES * 6 ||
+		    i / (MAX_SUBFEATURES * 2) != prev_slot) {
+			fnum++;
+			prev_slot = i / (MAX_SUBFEATURES * 2);
+		}
+	}
+
+	dyn_subfeatures = calloc(sfnum, sizeof(sensors_subfeature));
+	dyn_features = calloc(fnum, sizeof(sensors_feature));
+	if (!dyn_subfeatures || !dyn_features)
+		sensors_fatal_error(__FUNCTION__, "Out of memory");
+
+	/* Copy from the sparse array to the compact array */
+	sfnum = 0;
+	fnum = -1;
+	prev_slot = -1;
+	for (i = 0; i < ALL_POSSIBLE_SUBFEATURES; i++) {
+		if (!all_subfeatures[i].name)
+			continue;
+
+		/* New main feature? */
+		if (i >= MAX_SENSORS_PER_TYPE * MAX_SUBFEATURES * 6 ||
+		    i / (MAX_SUBFEATURES * 2) != prev_slot) {
+			ftype = all_subfeatures[i].type >> 8;
+			fnum++;
+			prev_slot = i / (MAX_SUBFEATURES * 2);
+
+			dyn_features[fnum].name = get_feature_name(ftype,
+						all_subfeatures[i].name);
+			dyn_features[fnum].number = fnum;
+			dyn_features[fnum].first_subfeature = sfnum;
+			dyn_features[fnum].type = ftype;
+		}
+
+		dyn_subfeatures[sfnum] = all_subfeatures[i];
+		dyn_subfeatures[sfnum].number = sfnum;
+		/* Back to the feature */
+		dyn_subfeatures[sfnum].mapping = fnum;
+
+		sfnum++;
+	}
+
+	chip->subfeature = dyn_subfeatures;
+	chip->subfeature_count = sfnum;
+	chip->feature = dyn_features;
+	chip->feature_count = ++fnum;
+
+exit_free:
+	free(all_subfeatures);
+	return 0;
+}
 
 /* returns !0 if sysfs filesystem was found, 0 otherwise */
 int sensors_init_sysfs(void)
 {
-	if (sysfs_get_mnt_path(sensors_sysfs_mount, NAME_MAX) == 0)
-		sensors_found_sysfs = 1;
+	struct stat statbuf;
 
-	return sensors_found_sysfs;
+	/* libsysfs will return success even if sysfs is not mounted,
+	   so we have to double-check */
+	if (sysfs_get_mnt_path(sensors_sysfs_mount, NAME_MAX)
+	 || stat(sensors_sysfs_mount, &statbuf) < 0
+	 || statbuf.st_nlink <= 2)	/* Empty directory */
+		return 0;
+
+	return 1;
 }
 
 /* returns: 0 if successful, !0 otherwise */
 static int sensors_read_one_sysfs_chip(struct sysfs_device *dev)
 {
 	int domain, bus, slot, fn;
+	int err = -SENSORS_ERR_KERNEL;
 	struct sysfs_attribute *attr, *bus_attr;
 	char bus_path[SYSFS_PATH_MAX];
-	sensors_proc_chips_entry entry;
+	sensors_chip_features entry;
 
 	/* ignore any device without name attribute */
 	if (!(attr = sysfs_get_device_attr(dev, "name")))
 		return 0;
 
-	/* ignore subclients */
-	if (attr->len >= 11 && !strcmp(attr->value + attr->len - 11,
-			" subclient\n"))
-		return 0;
-
-	/* also ignore eeproms */
-	if (!strcmp(attr->value, "eeprom\n"))
-		return 0;
-
 	/* NB: attr->value[attr->len-1] == '\n'; chop that off */
-	entry.name.prefix = strndup(attr->value, attr->len - 1);
-	if (!entry.name.prefix)
+	entry.chip.prefix = strndup(attr->value, attr->len - 1);
+	if (!entry.chip.prefix)
 		sensors_fatal_error(__FUNCTION__, "out of memory");
 
-	entry.name.busname = strdup(dev->path);
-	if (!entry.name.busname)
+	entry.chip.path = strdup(dev->path);
+	if (!entry.chip.path)
 		sensors_fatal_error(__FUNCTION__, "out of memory");
 
-	if (sscanf(dev->name, "%d-%x", &entry.name.bus, &entry.name.addr) == 2) {
+	if (sscanf(dev->name, "%hd-%x", &entry.chip.bus.nr, &entry.chip.addr) == 2) {
 		/* find out if legacy ISA or not */
-		if (entry.name.bus == 9191)
-			entry.name.bus = SENSORS_CHIP_NAME_BUS_ISA;
-		else {
+		if (entry.chip.bus.nr == 9191) {
+			entry.chip.bus.type = SENSORS_BUS_TYPE_ISA;
+			entry.chip.bus.nr = 0;
+		} else {
+			entry.chip.bus.type = SENSORS_BUS_TYPE_I2C;
 			snprintf(bus_path, sizeof(bus_path),
 				"%s/class/i2c-adapter/i2c-%d/device/name",
-				sensors_sysfs_mount, entry.name.bus);
+				sensors_sysfs_mount, entry.chip.bus.nr);
 
 			if ((bus_attr = sysfs_open_attribute(bus_path))) {
 				if (sysfs_read_attribute(bus_attr)) {
@@ -90,30 +383,48 @@ static int sensors_read_one_sysfs_chip(struct sysfs_device *dev)
 				}
 
 				if (bus_attr->value
-				 && !strncmp(bus_attr->value, "ISA ", 4))
-					entry.name.bus = SENSORS_CHIP_NAME_BUS_ISA;
+				 && !strncmp(bus_attr->value, "ISA ", 4)) {
+					entry.chip.bus.type = SENSORS_BUS_TYPE_ISA;
+					entry.chip.bus.nr = 0;
+				}
 
 				sysfs_close_attribute(bus_attr);
 			}
 		}
-	} else if (sscanf(dev->name, "%*[a-z0-9_].%d", &entry.name.addr) == 1) {
+	} else if (sscanf(dev->name, "spi%hd.%d", &entry.chip.bus.nr,
+			  &entry.chip.addr) == 2) {
+		/* SPI */
+		entry.chip.bus.type = SENSORS_BUS_TYPE_SPI;
+	} else if (sscanf(dev->name, "%*[a-z0-9_].%d", &entry.chip.addr) == 1) {
 		/* must be new ISA (platform driver) */
-		entry.name.bus = SENSORS_CHIP_NAME_BUS_ISA;
+		entry.chip.bus.type = SENSORS_BUS_TYPE_ISA;
+		entry.chip.bus.nr = 0;
 	} else if (sscanf(dev->name, "%x:%x:%x.%x", &domain, &bus, &slot, &fn) == 4) {
 		/* PCI */
-		entry.name.addr = (domain << 16) + (bus << 8) + (slot << 3) + fn;
-		entry.name.bus = SENSORS_CHIP_NAME_BUS_PCI;
-	} else
-		goto exit_free;
+		entry.chip.addr = (domain << 16) + (bus << 8) + (slot << 3) + fn;
+		entry.chip.bus.type = SENSORS_BUS_TYPE_PCI;
+		entry.chip.bus.nr = 0;
+	} else {
+		/* platform device with no id? */
+		entry.chip.bus.type = SENSORS_BUS_TYPE_ISA;
+		entry.chip.bus.nr = 0;
+		entry.chip.addr = 0;
+	}
 
+	if (sensors_read_dynamic_chip(&entry, dev) < 0)
+		goto exit_free;
+	if (!entry.subfeature) { /* No subfeature, discard chip */
+		err = 0;
+		goto exit_free;
+	}
 	sensors_add_proc_chips(&entry);
 
 	return 0;
 
 exit_free:
-	free(entry.name.prefix);
-	free(entry.name.busname);
-	return -SENSORS_ERR_PARSE;
+	free(entry.chip.prefix);
+	free(entry.chip.path);
+	return err;
 }
 
 /* returns 0 if successful, !0 otherwise */
@@ -126,13 +437,13 @@ static int sensors_read_sysfs_chips_compat(void)
 
 	if (!(bus = sysfs_open_bus("i2c"))) {
 		if (errno && errno != ENOENT)
-			ret = -SENSORS_ERR_PROC;
+			ret = -SENSORS_ERR_KERNEL;
 		goto exit0;
 	}
 
 	if (!(devs = sysfs_get_bus_devices(bus))) {
 		if (errno && errno != ENOENT)
-			ret = -SENSORS_ERR_PROC;
+			ret = -SENSORS_ERR_KERNEL;
 		goto exit1;
 	}
 
@@ -163,14 +474,14 @@ int sensors_read_sysfs_chips(void)
 
 	if (!(clsdevs = sysfs_get_class_devices(cls))) {
 		if (errno && errno != ENOENT)
-			ret = -SENSORS_ERR_PROC;
+			ret = -SENSORS_ERR_KERNEL;
 		goto exit;
 	}
 
 	dlist_for_each_data(clsdevs, clsdev, struct sysfs_class_device) {
 		struct sysfs_device *dev;
 		if (!(dev = sysfs_get_classdev_device(clsdev))) {
-			ret = -SENSORS_ERR_PROC;
+			ret = -SENSORS_ERR_KERNEL;
 			goto exit;
 		}
 		if ((ret = sensors_read_one_sysfs_chip(dev)))
@@ -194,13 +505,13 @@ int sensors_read_sysfs_bus(void)
 
 	if (!(cls = sysfs_open_class("i2c-adapter"))) {
 		if (errno && errno != ENOENT)
-			ret = -SENSORS_ERR_PROC;
+			ret = -SENSORS_ERR_KERNEL;
 		goto exit0;
 	}
 
 	if (!(clsdevs = sysfs_get_class_devices(cls))) {
 		if (errno && errno != ENOENT)
-			ret = -SENSORS_ERR_PROC;
+			ret = -SENSORS_ERR_KERNEL;
 		goto exit1;
 	}
 
@@ -216,16 +527,15 @@ int sensors_read_sysfs_bus(void)
 		      (attr = sysfs_get_device_attr(dev, "name"))))
 			continue;
 
+		if (sscanf(clsdev->name, "i2c-%hd", &entry.bus.nr) != 1 ||
+		    entry.bus.nr == 9191) /* legacy ISA */
+			continue;
+		entry.bus.type = SENSORS_BUS_TYPE_I2C;
+
 		/* NB: attr->value[attr->len-1] == '\n'; chop that off */
 		entry.adapter = strndup(attr->value, attr->len - 1);
 		if (!entry.adapter)
 			sensors_fatal_error(__FUNCTION__, "out of memory");
-
-		if (!strncmp(entry.adapter, "ISA ", 4)) {
-			entry.number = SENSORS_CHIP_NAME_BUS_ISA;
-		} else if (sscanf(clsdev->name, "i2c-%d", &entry.number) != 1) {
-			entry.number = SENSORS_CHIP_NAME_BUS_DUMMY;
-		}
 
 		sensors_add_proc_bus(&entry);
 	}
@@ -238,3 +548,69 @@ exit0:
 	return ret;
 }
 
+int sensors_read_sysfs_attr(const sensors_chip_name *name,
+			    const sensors_subfeature *subfeature,
+			    double *value)
+{
+	char n[NAME_MAX];
+	FILE *f;
+
+	snprintf(n, NAME_MAX, "%s/%s", name->path, subfeature->name);
+	if ((f = fopen(n, "r"))) {
+		int res, err = 0;
+
+		errno = 0;
+		res = fscanf(f, "%lf", value);
+		if (res == EOF && errno == EIO)
+			err = -SENSORS_ERR_IO;
+		else if (res != 1)
+			err = -SENSORS_ERR_ACCESS_R;
+		res = fclose(f);
+		if (err)
+			return err;
+
+		if (res == EOF) {
+			if (errno == EIO)
+				return -SENSORS_ERR_IO;
+			else 
+				return -SENSORS_ERR_ACCESS_R;
+		}
+		*value /= get_type_scaling(subfeature->type);
+	} else
+		return -SENSORS_ERR_KERNEL;
+
+	return 0;
+}
+
+int sensors_write_sysfs_attr(const sensors_chip_name *name,
+			     const sensors_subfeature *subfeature,
+			     double value)
+{
+	char n[NAME_MAX];
+	FILE *f;
+
+	snprintf(n, NAME_MAX, "%s/%s", name->path, subfeature->name);
+	if ((f = fopen(n, "w"))) {
+		int res, err = 0;
+
+		value *= get_type_scaling(subfeature->type);
+		res = fprintf(f, "%d", (int) value);
+		if (res == -EIO)
+			err = -SENSORS_ERR_IO;
+		else if (res < 0)
+			err = -SENSORS_ERR_ACCESS_W;
+		res = fclose(f);
+		if (err)
+			return err;
+
+		if (res == EOF) {
+			if (errno == EIO)
+				return -SENSORS_ERR_IO;
+			else 
+				return -SENSORS_ERR_ACCESS_W;
+		}
+	} else
+		return -SENSORS_ERR_KERNEL;
+
+	return 0;
+}

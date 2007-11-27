@@ -1,6 +1,6 @@
 /*
-    proc.h - Part of libsensors, a Linux library for reading sensor data.
-    Copyright (c) 1998, 1999  Frodo Looijaard <frodol@dds.nl>
+    main.h - Part of sensors, a user-space program for hardware monitoring
+    Copyright (C) 2007       Jean Delvare <khali@linux-fr.org>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,21 +17,10 @@
     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
 
-#ifndef SENSORS_LIB_PROC_H
-#define SENSORS_LIB_PROC_H
+#ifndef PROG_SENSORS_MAIN_H
+#define PROG_SENSORS_MAIN_H
 
-/* Read /proc/sys/dev/sensors/chips */
-extern int sensors_read_proc_chips(void);
+extern int fahrenheit;
+extern char degstr[5];
 
-/* Read /proc/bus/i2c */
-extern int sensors_read_proc_bus(void);
-
-/* Read a value out of a /proc file */
-extern int sensors_read_proc(sensors_chip_name name, int feature, 
-                             double *value);
-
-/* Write a value to a /proc file */
-extern int sensors_write_proc(sensors_chip_name name, int feature,
-                              double value);
-
-#endif
+#endif /* PROG_SENSORS_MAIN_H */
