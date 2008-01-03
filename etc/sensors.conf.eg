@@ -937,7 +937,7 @@ chip "gl520sm-*"
 #
 
   compute in2 (197/47)*@  ,  @/(197/47)
-  compute in4 (5*@)-(4*in0) , (@+4*in0)/5
+  compute in4 (5*@)-(4*in0_input) , (@+4*in0_input)/5
 
 #  set in0_min 4.8
 #  set in0_max 5.2
@@ -987,8 +987,8 @@ chip "lm80-*"
     compute in2 (22.1/30 + 1) * @ ,       @ / (22.1/30 + 1)
     compute in3 (2.8/1.9) * @,            @ * 1.9/2.8
     compute in4 (160/30.1 + 1) * @,       @ / (160/30.1 + 1)
-    compute in5 (160/35.7)*(@ - in0) + @, (@ + in0 * 160/35.7)/ (1 + 160/35.7)
-    compute in6 (36/16.2)*(@ - in0) + @,  (@ + in0 * 36/16.2) / (1 + 36/16.2)
+    compute in5 (160/35.7)*(@ - in0_input) + @, (@ + in0_input * 160/35.7)/ (1 + 160/35.7)
+    compute in6 (36/16.2)*(@ - in0_input) + @,  (@ + in0_input * 36/16.2) / (1 + 36/16.2)
 
 #    set in0_min 5 * 0.95
 #    set in0_max 5 * 1.05
@@ -1237,6 +1237,13 @@ chip "it87-*" "it8712-*"
     label in7 "Stdby"
     label in8 "VBat"
 
+# Incubus Saturnus reports that the IT87 chip on Asus A7V8X-X seems
+# to report the VCORE voltage approximately 0.05V higher than the board's
+# BIOS does. Although it doesn't make much sense physically, uncommenting
+# the next line should bring the readings in line with the BIOS' ones in
+# this case.
+# compute in0 -0.05+@ , @+0.05
+
 # If 3.3V reads around 1.65V, uncomment the following line:
 #    compute in2   2*@ , @/2
 
@@ -1315,11 +1322,17 @@ chip "it87-*" "it8712-*"
 #    set   temp3_max   45
 #    set   temp3_min   15
 
-# The A7V8X-X and A7V600 have temperatures inverted, and needs a conversion
-# for CPU temp. Thanks to Preben Randhol for the formula.
+# The A7V8X-X has temperatures inverted, and needs a conversion for
+# CPU temp. Thanks to Preben Randhol for the formula.
 #   label temp1       "CPU Temp"
 #   label temp2       "M/B Temp"
 #   compute temp1     (-15.096+1.4893*@), (@+15.096)/1.4893
+
+# The A7V600 also has temperatures inverted, and needs a different
+# conversion for CPU temp. Thanks to Dariusz Jaszkowski for the formula.
+#   label temp1       "CPU Temp"
+#   label temp2       "M/B Temp"
+#   compute temp1     (@+128)/3, (3*@-128)
 
 # Fans
 #   set fan1_min 0
@@ -1992,49 +2005,6 @@ chip "lm85c-*" "adm1027-*" "adt7463-*" "lm85-*" "lm85b-*"
 #   set temp3_min 10
 #   set temp3_max 35
 
-# Those /sys files have been added in 2.6.19+ kernels and are
-# disabled by default. Comment those lines if you have such a kernel.
-   ignore in5
-   ignore in6
-   ignore in7
-   ignore fan1_tach_mode
-   ignore zone1_limit
-   ignore zone1_hyst
-   ignore zone1_range
-   ignore zone1_critical
-   ignore zone1_smooth
-   ignore zone2_limit
-   ignore zone2_hyst
-   ignore zone2_range
-   ignore zone2_critical
-   ignore zone2_smooth
-   ignore zone3_limit
-   ignore zone3_hyst
-   ignore zone3_range
-   ignore zone3_critical
-   ignore zone3_smooth
-   ignore pwm1_spinup
-   ignore pwm1_min
-   ignore pwm1_freq
-   ignore pwm1_min_ctl
-   ignore pwm1_invert
-   ignore pwm1_zone
-   ignore pwm1_spinup_ctl
-   ignore pwm2_spinup
-   ignore pwm2_min
-   ignore pwm2_freq
-   ignore pwm2_min_ctl
-   ignore pwm2_invert
-   ignore pwm2_zone
-   ignore pwm2_spinup_ctl
-   ignore pwm3_spinup
-   ignore pwm3_min
-   ignore pwm3_freq
-   ignore pwm3_min_ctl
-   ignore pwm3_invert
-   ignore pwm3_zone
-   ignore pwm3_spinup_ctl
-
 chip "pc87366-*"
 
 # Voltage inputs
@@ -2094,12 +2064,12 @@ chip "pc87366-*"
 # We also assume that you have a working in10 (which is forcibly enabled by
 # default). If not, use 3.3 instead, but you lose accuracy.
 
-   compute temp4  3435 / (` (1 / (1 - @ / in10) - 1) + 3435 / 298.15) - 273.15, \
-                  in10 * (1 - 1 / (1 + (^ (3435 / (273.15 + @) - 3435 / 298.15))))
-   compute temp5  3435 / (` (1 / (1 - @ / in10) - 1) + 3435 / 298.15) - 273.15, \
-                  in10 * (1 - 1 / (1 + (^ (3435 / (273.15 + @) - 3435 / 298.15))))
-   compute temp6  3435 / (` (1 / (1 - @ / in10) - 1) + 3435 / 298.15) - 273.15, \
-                  in10 * (1 - 1 / (1 + (^ (3435 / (273.15 + @) - 3435 / 298.15))))
+   compute temp4  3435 / (` (1 / (1 - @ / in10_input) - 1) + 3435 / 298.15) - 273.15, \
+                  in10_input * (1 - 1 / (1 + (^ (3435 / (273.15 + @) - 3435 / 298.15))))
+   compute temp5  3435 / (` (1 / (1 - @ / in10_input) - 1) + 3435 / 298.15) - 273.15, \
+                  in10_input * (1 - 1 / (1 + (^ (3435 / (273.15 + @) - 3435 / 298.15))))
+   compute temp6  3435 / (` (1 / (1 - @ / in10_input) - 1) + 3435 / 298.15) - 273.15, \
+                  in10_input * (1 - 1 / (1 + (^ (3435 / (273.15 + @) - 3435 / 298.15))))
 
 #   set temp4_min    0
 #   set temp4_max   70

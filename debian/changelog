@@ -1,3 +1,14 @@
+lm-sensors-3 (1:3.0.0-5) unstable; urgency=low
+
+  * Move sensors3.conf file to libsensors4.
+  * Only convert /etc/sensors.conf into /etc/sensors3.conf if the former has
+    been modified. Otherwise, install the default file.
+  * Fix voltage value references in compute statements in the default
+    configuration file and in the configuration file converter
+    (closes: bug#456774).
+
+ -- Aurelien Jarno <aurel32@debian.org>  Thu, 03 Jan 2008 11:11:02 +0100
+
 lm-sensors-3 (1:3.0.0-4) unstable; urgency=medium
 
   * Apply upstream fix for sensord.

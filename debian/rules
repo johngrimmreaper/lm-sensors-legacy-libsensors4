@@ -35,13 +35,17 @@ install-stamp: build
 	dh_clean -s -k 
 	dh_installdirs -s
 
-	$(MAKE) user_install DESTDIR=$(CURDIR)/debian/tmp PREFIX=/usr MANDIR=/usr/share/man \
-		PROG_EXTRA=sensord EXLDFLAGS=""
+	$(MAKE) user_install \
+		DESTDIR=$(CURDIR)/debian/tmp \
+		PREFIX=/usr \
+		MANDIR=/usr/share/man \
+		PROG_EXTRA=sensord \
+		EXLDFLAGS=""
 
 	# Install extra files as needed
 	install -m 0644 debian/sensord.logcheck debian/sensord/etc/logcheck/ignore.d.server/sensord
 	install -m 0644 debian/sensord.logcheck debian/sensord/etc/logcheck/ignore.d.workstation/sensord
-	install -m 0644 etc/sensors.conf.eg debian/lm-sensors/usr/share/lm-sensors/sensors.conf.eg
+	install -m 0644 etc/sensors.conf.eg debian/libsensors4/usr/share/libsensors4/sensors.conf.eg
 
 	# Install isadump only if it has been built (on x86/x86_64 archs only)
 	if [ -x prog/dump/isadump ] ; then \
