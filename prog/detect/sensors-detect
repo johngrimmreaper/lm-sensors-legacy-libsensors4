@@ -47,7 +47,7 @@ foreach ('/usr/sbin', '/usr/local/sbin', '/sbin') {
 use vars qw(@pci_adapters @chip_ids $i2c_addresses_to_scan @superio_ids
             @cpu_ids $revision);
 
-$revision = '$Revision: 5016 $ ($Date: 2007-11-11 22:20:16 +0100 (dim, 11 nov 2007) $)';
+$revision = '$Revision: 5108 $ ($Date: 2008-01-22 13:22:47 +0100 (mar, 22 jan 2008) $)';
 $revision =~ s/\$\w+: (.*?) \$/$1/g;
 $revision =~ s/ \([^()]*\)//;
 
@@ -1462,12 +1462,6 @@ use vars qw(@pci_adapters_sis5595 @pci_adapters_sis645 @pci_adapters_sis96x);
        i2c_detect => sub { fintek_detect(7, @_); },
      },
      {
-       name => "Philips Semiconductors PCA9540",
-       driver => "pca9540",
-       i2c_addrs => [0x70],
-       i2c_detect => sub { pca9540_detect(@_); },
-     },
-     {
        name => "Smart Battery",
        driver => "smartbatt",
        i2c_addrs => [0x0b],
@@ -1698,12 +1692,12 @@ use vars qw(@chip_kern24_ids @chip_kern26_ids
 	logdev => 0x0f,
       },
       {
-	name => "Nat. Semi. PC87371 Super IO",
+	name => "Nat. Semi. PC87317 Super IO",
 	driver => "not-a-sensor",
 	devid => 0xd0,
       },
       {
-	name => "Nat. Semi. PC97371 Super IO",
+	name => "Nat. Semi. PC97317 Super IO",
 	driver => "not-a-sensor",
 	devid => 0xdf,
       },
@@ -1919,6 +1913,12 @@ use vars qw(@chip_kern24_ids @chip_kern26_ids
 	driver => "not-a-sensor",
 	devid => 0x79,
       },
+      {
+	name => "SMSC SCH5514D-NS Super IO",
+	# No datasheet
+	driver => "not-a-sensor",
+	devid => 0x83,
+      },
     ],
     # Non-standard SMSC detection callback and chip list. These chips differ
     # from the standard ones listed above in that the device ID register 
@@ -2049,10 +2049,21 @@ use vars qw(@chip_kern24_ids @chip_kern26_ids
 	logdev => 0x04,
       },
       {
+	name => "Fintek F71858DG Super IO Sensors",
+	driver => "to-be-written",
+	devid => 0x0507,
+	logdev => 0x02,
+      },
+      {
 	name => "Fintek F71882FG/F71883FG Super IO Sensors",
 	driver => "f71882fg",
 	devid => 0x0541,
 	logdev => 0x04,
+      },
+      {
+	name => "Fintek F81216D Super IO",
+	driver => "not-a-sensor",
+	devid => 0x0208,
       },
       {
 	name => "Fintek F81218D Super IO",
@@ -5213,24 +5224,6 @@ sub fintek_detect
   return 7;
 }
 
-# $_[0]: A reference to the file descriptor to access this chip.
-# $_[1]: Address
-# Returns: undef if not detected, 1 if detected
-# Detection is rather difficult, since the PCA9540 has a single register.
-# Fortunately, no other device is known to live at this address.
-sub pca9540_detect
-{
-	my ($file, $addr) = @_;
-	my $reg = i2c_smbus_read_byte($file);
-
-	return if ($reg & 0xfa);
-	return if $reg != i2c_smbus_read_byte($file);
-	return if $reg != i2c_smbus_read_byte($file);
-	return if $reg != i2c_smbus_read_byte($file);
-
-	return 1;
-}
-
 # This checks for non-FFFF values for temperature, voltage, and current.
 # The address (0x0b) is specified by the SMBus standard so it's likely
 # that this really is a smart battery.
@@ -5325,7 +5318,7 @@ sub w83l785ts_detect
 #        if somebody finds a way to distinguish MAX6650 and MAX6651.
 # $_[1]: A reference to the file descriptor to access this chip.
 # $_[2]: Address
-# Returns: undef if not detected, 4 if detected.
+# Returns: undef if not detected, 3 if detected.
 #
 # The max6650 has no device ID register. However, a few registers have
 # spare bits, which are documented as being always zero on read. We read
@@ -5352,7 +5345,7 @@ sub max6650_detect
   return if i2c_smbus_read_byte_data($file,0x14) & 0xE0;
   return if ($conf & 0xC0) or ($conf & 0x07) > 4;
 
-  return 4;
+  return 3;
 }
 
 # $_[0]: Chip to detect. Always zero.
@@ -5472,7 +5465,9 @@ sub coretemp_detect
 		if ($probecpu->{'vendor_id'} eq 'GenuineIntel' && 
 				$probecpu->{'cpu family'} == 6 &&
 				($probecpu->{'model'} == 14 ||
-				 $probecpu->{'model'} == 15)) {
+				 $probecpu->{'model'} == 15 ||
+				 $probecpu->{'model'} == 0x16 ||
+				 $probecpu->{'model'} == 0x17)) {
 			return 9;
 		}
 	}
@@ -5856,35 +5851,34 @@ sub main
   }
   print "\n";
 
-  print "I will now generate the commands needed to load the required modules.\n".
-        "Just press ENTER to continue: ";
-  <STDIN>;
-     
-  print "\n";
   my ($modprobes, $configfile) = generate_modprobes 1;	# 1 == prefer ISA
+
   if (defined $configfile) {
-    print "To make the sensors modules behave correctly, add these lines to\n".
-          "$modules_conf:\n\n";
-    print "#----cut here----\n".
-          $configfile.
-          "#----cut here----\n\n";
+    my $have_modprobe_d = -d '/etc/modprobe.d';
+    printf "Do you want to \%s /etc/modprobe.d/lm_sensors? (\%s): ",
+           (-e '/etc/modprobe.d/lm_sensors' ? 'overwrite' : 'generate'),
+           ($have_modprobe_d ? 'YES/no' : 'yes/NO');
+    $_ = <STDIN>;
+    if (($have_modprobe_d and not m/^\s*n/i) or m/^\s*y/i) {
+      unless ($have_modprobe_d) {
+        mkdir '/etc/modprobe.d', 0777
+          or die "Sorry, can't create /etc/modprobe.d ($!)";
+      }
+      open(local *MODPROBE_D, ">/etc/modprobe.d/lm_sensors")
+        or die "Sorry, can't create /etc/modprobe.d/lm_sensors ($!)";
+      print MODPROBE_D
+        "# Generated by sensors-detect on " . scalar localtime() . "\n";
+      print MODPROBE_D $configfile;
+      close(MODPROBE_D);
+    } else {
+      print "To make the sensors modules behave correctly, add these lines to\n".
+            "$modules_conf:\n\n";
+      print "#----cut here----\n".
+            $configfile.
+            "#----cut here----\n\n";
+    }
   }
 
-  print "To load everything that is needed, add this to some /etc/rc* file:\n\n";
-  print "#----cut here----\n".
-        $modprobes.
-        "# sleep 2 # optional\n".
-        (-e '/usr/bin/sensors' ?
-          "/usr/bin/sensors -s # recommended\n" :
-          "/usr/local/bin/sensors -s # recommended\n") .
-        "#----cut here----\n\n";
-
-  print "If you have some drivers built into your kernel, the list above will\n".
-        "contain too many modules. Skip the appropriate ones! You really\n".
-        "should try these commands right now to make sure everything is\n".
-        "working properly. Monitoring programs won't work until the needed\n".
-        "modules are loaded.\n\n";
-  
   my $have_sysconfig = -d '/etc/sysconfig';
   printf "Do you want to \%s /etc/sysconfig/lm_sensors? (\%s): ",
          (-e '/etc/sysconfig/lm_sensors' ? 'overwrite' : 'generate'),
@@ -5941,10 +5935,33 @@ EOT
       $i++;
     }
     print SYSCONFIG $sysconfig;
+    close(SYSCONFIG);
 
     print "Copy prog/init/lm_sensors.init to /etc/init.d/lm_sensors\n".
           "for initialization at boot time.\n"
       unless -f "/etc/init.d/lm_sensors";
+
+    if (-x "/sbin/insserv" && -f "/etc/init.d/lm_sensors") {
+      system("/sbin/insserv", "/etc/init.d/lm_sensors");
+    } else {
+      print "You should now start the lm_sensors service to load the required\n".
+            "kernel modules.\n\n";
+    }
+  } else {
+    print "To load everything that is needed, add this to one of the system\n".
+          "initialization scripts (e.g. /etc/rc.d/rc.local):\n\n";
+    print "#----cut here----\n".
+          $modprobes.
+          (-e '/usr/bin/sensors' ?
+            "/usr/bin/sensors -s\n" :
+            "/usr/local/bin/sensors -s\n") .
+          "#----cut here----\n\n";
+
+    print "If you have some drivers built into your kernel, the list above will\n".
+          "contain too many modules. Skip the appropriate ones! You really\n".
+          "should try these commands right now to make sure everything is\n".
+          "working properly. Monitoring programs won't work until the needed\n".
+          "modules are loaded.\n\n";
   }
 }
 

@@ -1,6 +1,32 @@
 lm-sensors CHANGES file
 -----------------------
 
+3.0.1 (2008-01-28)
+  documentation: Update the application writing guidelines
+  libsensors: No longer depend on libsysfs (#2262)
+              Don't guess the bus type from the device ID format (#2240)
+              Add support for attributes in the hwmon class device (#2260)
+  Makefile: No warnings about ld configuration for staged installations
+            Document the variable overriding mechanism (#2296)
+  pwmconfig: Really hide errors on sysfs writes
+             Deal gracefully with read-only pwm_enable files
+             Warn about outputs found in automatic mode
+             Repeat available configuration options before prompt (#2289)
+             Fix duplicate warning message when config file is broken
+  fancontrol: Detect improperly formatted FCTEMPS value (#2293)
+  sensord: Fix rrd support (#2276)
+           Use the same colors for daily and weekly charts
+           Drop workaround needed by old versions of rrdtool
+  sensors: Fix error path on library initialization error
+  sensors.conf.eg: Fix voltage value references (g520sm, lm80, pc87366)
+  sensors-detect: Drop PCA9540 detection
+                  Improve sysconfig and modprobe.d integration
+                  Add SMSC SCH5514D-NS detection (no sensors)
+                  Lower the confidence of MAX6650/MAX6651
+                  Add Fintek F71858DG detection
+                  Add Fintek F81216D detection (no sensors)
+  unhide_ICH_SMBus: Add support for the 82801AA (ICH)
+
 3.0.0 (2007-11-24)
   Makefile: Fix MODULE_DIR usage in etc
             Fix build on PPC
@@ -10,6 +36,7 @@ lm-sensors CHANGES file
                   Mention the f75375s driver
                   Add SMSC LPC47B367-NC detection (no sensors)
                   Reduce w83781d/lm78 I2C address probing range
+                  Add Intel Celeron 4xx and Penryn (CPU on 45nm) detection 
 
 3.0.0-rc3 (2007-10-28)
   libsensors: Add a default configuration file

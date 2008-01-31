@@ -40,11 +40,9 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include <getopt.h>
 #include <rrd.h>
 
 #include "sensord.h"
-#include "lib/error.h"
 
 #define DO_READ 0
 #define DO_SCAN 1
@@ -156,10 +154,10 @@ applyToFeatures
 
         for (index0 = 0; (ret == 0) && (num < MAX_RRD_SENSORS) && features[index0].format; ++ index0) {
           const FeatureDescriptor *feature = features + index0;
-          const char *rawLabel = features->feature->name;
+          const char *rawLabel = feature->feature->name;
           char *label = NULL;
 
-          if (!(label = sensors_get_label (chip, features->feature))) {
+          if (!(label = sensors_get_label (chip, feature->feature))) {
             sensorLog (LOG_ERR, "Error getting sensor label: %s/%s", chip->prefix, rawLabel);
             ret = -1;
           } else  {
@@ -252,10 +250,6 @@ rrdInit
         argc += num;
         argv[argc ++] = rraBuff;
         argv[argc] = NULL;
-        optind = 1;
-        opterr = 0;
-        optopt = '?';
-        optarg = NULL;
         if ((ret = rrd_create (argc, (char **) /* WEAK */ argv))) {
           sensorLog (LOG_ERR, "Error creating RRD file: %s: %s", rrdFile, rrd_get_error ());
         }
@@ -294,12 +288,36 @@ rrdCGI_DEF
   return 0;
 }
 
+/* Compute an arbitrary color based on the sensor label. This is preferred
+   over a random value because this guarantees that daily and weekly charts
+   will use the same colors. */
+static int
+rrdCGI_color
+(const char *label) {
+  unsigned long color = 0, brightness;
+  const char *c;
+
+  for (c = label; *c; c++) {
+    color = (color << 6) + (color >> (*c & 7));
+    color ^= (*c) * 0x401;
+  }
+  color &= 0xffffff;
+  /* Adjust very light colors */
+  brightness = (color & 0xff) + ((color >> 8) & 0xff) + (color >> 16);
+  if (brightness > 672)
+    color &= 0x7f7f7f;
+  /* Adjust very dark colors */
+  else if (brightness < 96)
+    color |= 0x808080;
+  return color;
+}
+
 static int
 rrdCGI_LINE
 (void *_data, const char *rawLabel, const char *label, const FeatureDescriptor *feature) {
   struct gr *data = (struct gr *) _data;
   if (!feature || (feature->rrd && (feature->type == data->type)))
-    printf ("\n\tLINE2:%s#%.6x:\"%s\"", rawLabel, (int) random () & 0xffffff, label);
+    printf ("\n\tLINE2:%s#%.6x:\"%s\"", rawLabel, rrdCGI_color(label), label);
   return 0;
 }
 
@@ -394,10 +412,6 @@ rrdUpdate
     const char *argv[] = {
       "sensord", rrdFile, rrdBuff, NULL
     };
-    optind = 1;
-    opterr = 0;
-    optopt = '?';
-    optarg = NULL;
     if ((ret = rrd_update (3, (char **) /* WEAK */ argv))) {
       sensorLog (LOG_ERR, "Error updating RRD file: %s: %s", rrdFile, rrd_get_error ());
     }
