@@ -1,4 +1,5 @@
 #!/bin/sh
+
 ### BEGIN INIT INFO
 # Provides:          lm-sensors
 # Required-Start:    $local_fs
@@ -19,20 +20,19 @@ test -x $PROGRAM || exit 0
 
 case "$1" in
   start)
-	log_begin_msg "Setting sensors limits..."
-	 if [ "$VERBOSE" = "no" ]; then
+	log_begin_msg "Setting sensors limits"
+	if [ "$VERBOSE" = "no" ]; then
 		/usr/bin/sensors -s 1> /dev/null 2> /dev/null
 		/usr/bin/sensors 1> /dev/null 2> /dev/null
-	 else
+	else
 		/usr/bin/sensors -s
 		/usr/bin/sensors > /dev/null
-	 fi
+	fi
 	log_end_msg $?
 	;;
   stop)
 	;;
   force-reload|restart)
-	$0 stop
 	$0 start
 	;;
   *)

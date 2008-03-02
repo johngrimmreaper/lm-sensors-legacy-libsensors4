@@ -1,3 +1,14 @@
+lm-sensors-3 (1:3.0.1-2) unstable; urgency=medium
+
+  * Don't try to convert the configuration file from version 2, let the user
+    do this task (closes: bug#468862, bug#467056).
+  * Suggest i2c-tools instead of i2c (closes: bug#460997).
+  * Rework debian/copyright.
+  * Add an iniscript for fancontrol (closes: bug#400770).
+  * Set minimum load average value to 0 in sensord (closes: bug#446313).
+
+ -- Aurelien Jarno <aurel32@debian.org>  Sun, 02 Mar 2008 22:24:39 +0100
+
 lm-sensors-3 (1:3.0.1-1) unstable; urgency=low
 
   * New upstream version.

@@ -78,7 +78,8 @@ binary-arch: build install
 	dh_installexamples -s -XCVS -XModule.mk
 	dh_installmodules -n -s --name=i2c
 	dh_installinit -psensord
-	dh_installinit -plm-sensors --no-start -- start 47 S .  # Should start after modutils (20) and mountnfs (45)
+	dh_installinit -plm-sensors --name=fancontrol --no-restart-on-upgrade
+	dh_installinit -plm-sensors --name=lm-sensors --no-start -- start 47 S .
 	dh_installman -s
 	dh_link -s
 	dh_strip -s

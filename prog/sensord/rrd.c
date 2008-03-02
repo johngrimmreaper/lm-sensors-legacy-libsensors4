@@ -202,6 +202,10 @@ rrdGetSensors_DS
         min = "0";
         max = "250";
         break;
+      case DataType_loadavg:
+        min = "0";
+	max = "U";
+	break;
       default:
         min = max = "U";
         break;
@@ -217,8 +221,11 @@ rrdGetSensors
   int ret = 0;
   struct ds data = { 0, argv};
   ret = applyToFeatures (rrdGetSensors_DS, &data);
-  if (!ret && doLoad)
-    ret = rrdGetSensors_DS (&data, LOADAVG, LOAD_AVERAGE, NULL);
+  if (!ret && doLoad) {
+    FeatureDescriptor feature;
+    feature.type = DataType_loadavg;
+    ret = rrdGetSensors_DS (&data, LOADAVG, LOAD_AVERAGE, &feature);
+  }
   return ret ? -1 : data.num;
 }
 

@@ -10,9 +10,14 @@
 # Description:       hardware sensor information logging daemon
 ### END INIT INFO
 
+. /lib/lsb/init-functions
+
+[ -f /etc/default/rcS ] && . /etc/default/rcS
 PATH=/bin:/usr/bin:/sbin:/usr/sbin
 DAEMON=/usr/sbin/sensord
-# PIDFILE=/var/run/sensord.pid
+DESC="sensor daemon"
+NAME="sensord"
+PIDFILE=/var/run/sensord.pid
 CONFIG=/etc/default/sensord
 
 test -x $DAEMON || exit 0
@@ -29,32 +34,23 @@ if [ -n "$RRD_LOADAVG" ]; then RRD_LOADAVG="-a"; fi
 
 case "$1" in
   start)
-	echo -n "Starting sensor daemon:"
-	echo -n " sensord"
-        if start-stop-daemon --quiet --stop --signal 0 --exec $DAEMON --name sensord
-	then
-		echo " already running."
-		exit
-	fi
-	/sbin/start-stop-daemon --start --quiet --exec $DAEMON -- $ALARM_INTERVAL $LOG_INTERVAL $SYSLOG_FACILITY $RRD_INTERVAL $RRD_FILE $RRD_LOADAVG $CONFIG_FILE $SCAN_CHIPS
-	echo "."
+	log_daemon_msg "Starting $DESC" "$NAME"
+	/sbin/start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON -- $ALARM_INTERVAL $LOG_INTERVAL $SYSLOG_FACILITY $RRD_INTERVAL $RRD_FILE $RRD_LOADAVG $CONFIG_FILE $SCAN_CHIPS
+	log_end_msg $?
 	;;
   stop)
-	echo -n "Stopping sensor daemon: sensord"
-	if start-stop-daemon --quiet --stop --signal 0 --exec $DAEMON --name sensord
-	then
-		start-stop-daemon --quiet --stop --exec $DAEMON --name sensord
-		# Now we wait for it to die
-		# while kill -0 $PID 2>/dev/null; do sleep 1; done
-		while start-stop-daemon --quiet --stop --signal 0 --exec $DAEMON --name sensord 2>/dev/null; do sleep 1; done
-		echo "."
-	else
-		echo " not running.";
-	fi
+	log_daemon_msg "Stopping $DESC" "$NAME"
+	start-stop-daemon --stop --quiet --pidfile $PIDFILE --oknodo --exec $DAEMON
+	log_end_msg $?
 	;;
-  force-reload|restart)
+  restart)
 	$0 stop
 	$0 start
+	;;
+  force-reload)
+	if start-stop-daemon --stop --test --quiet --pidfile $PIDFILE --exec $DAEMON ; then
+		$0 restart
+	fi
 	;;
   *)
 	echo "Usage: /etc/init.d/sensord {start|stop|restart|force-reload}"

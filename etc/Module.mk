@@ -34,11 +34,14 @@ install-etc:
 	fi
 	$(MKDIR) $(DESTDIR)$(BINDIR)
 	$(INSTALL) -m 755 $(ETC_DIR)/sensors-conf-convert $(DESTDIR)$(BINDIR)
+	$(MKDIR) $(DESTDIR)$(MANDIR)/man1
+	$(INSTALL) -m 644 $(ETC_DIR)/sensors-conf-convert.1 $(DESTDIR)$(MANDIR)/man1
 
 user_install :: install-etc
 
 uninstall-etc:
 	$(RM) $(DESTDIR)$(BINDIR)/sensors-conf-convert
+	$(RM) $(DESTDIR)$(MANDIR)/man1/sensors-conf-convert.1
 
 user_uninstall :: uninstall-etc
 

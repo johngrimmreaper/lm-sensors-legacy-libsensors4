@@ -10,7 +10,7 @@ Package: lm-sensors
 Architecture: any
 Section: utils
 Depends: sed (>= 4.0.5-1), ${misc:Depends}, ${shlibs:Depends}, ${perl:Depends}
-Suggests: sensord, read-edid, i2c
+Suggests: sensord, read-edid, i2c-tools
 Description: utilities to read temperature/voltage/fan sensors
  Lm-sensors is a hardware health monitoring package for Linux. It allows you
  to access information from temperature, voltage, and fan speed sensors. It

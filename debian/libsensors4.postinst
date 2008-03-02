@@ -18,15 +18,7 @@ case "$1" in
 		fi
 	fi
 	# Create the configuration file
-	if ! [ -f /etc/sensors3.conf ] && \
-	   [ -f /etc/sensors.conf ] && \
-	   ! cmp -s /var/lib/ucf/cache/\:etc\:sensors.conf /etc/sensors.conf ; then
-	    echo "Creating /etc/sensors3.conf from /etc/sensors.conf"
-	    ucf /usr/share/libsensors4/sensors.conf.eg /etc/sensors3.conf
-	    /usr/bin/sensors-conf-convert < /etc/sensors.conf > /etc/sensors3.conf
-	else
-	    ucf --debconf-ok --three-way /usr/share/libsensors4/sensors.conf.eg /etc/sensors3.conf
-	fi
+	ucf --debconf-ok --three-way /usr/share/libsensors4/sensors.conf.eg /etc/sensors3.conf
     ;;
     abort-upgrade|abort-remove|abort-deconfigure)
     ;;
