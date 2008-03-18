@@ -21,10 +21,14 @@ case "$1" in
 	# by old versions.
     	if [ -f "/etc/blacklist.d/lm-sensors" ] ; then
 		rm -f /etc/blacklist.d/lm-sensors
-	fi
-        if [ -d "/etc/blacklist.d/" ] ; then
 		rmdir --ignore-fail-on-non-empty /etc/blacklist.d/
 	fi
+	# Remove a config file that is not needed any more
+    	if [ -f "/etc/modutils/i2c" ] ; then
+		rm -f /etc/modutils/i2c
+		rmdir --ignore-fail-on-non-empty /etc/modutils/
+	fi
+	# Remove an old init script
 	if [ -h "/etc/rcS.d/S36lm-sensors" ] ; then
 		rm /etc/rcS.d/S36lm-sensors
 	fi

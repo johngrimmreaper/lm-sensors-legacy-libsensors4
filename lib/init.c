@@ -18,6 +18,7 @@
     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
 
+#include <locale.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
@@ -36,12 +37,20 @@
 int sensors_init(FILE *input)
 {
 	int res;
+	char *locale = NULL;
 
 	if (!sensors_init_sysfs())
 		return -SENSORS_ERR_KERNEL;
 	if ((res = sensors_read_sysfs_bus()) ||
 	    (res = sensors_read_sysfs_chips()))
 		goto exit_cleanup;
+
+	/* Read the current locale */
+	locale = setlocale(LC_ALL, NULL);
+	if (locale)
+		locale = strdup(locale);
+	/* Set the locale to C */
+	setlocale(LC_ALL, "C");
 
 	res = -SENSORS_ERR_PARSE;
 	if (input) {
@@ -63,11 +72,21 @@ int sensors_init(FILE *input)
 		}
 	}
 
+	/* Restore the old locale */
+	if (locale) {
+		setlocale(LC_ALL, locale);
+		free(locale);
+	}
 	if ((res = sensors_substitute_busses()))
 		goto exit_cleanup;
 	return 0;
 
 exit_cleanup:
+	/* Restore the old locale */
+	if (locale) {
+		setlocale(LC_ALL, locale);
+		free(locale);
+	}
 	sensors_cleanup();
 	return res;
 }

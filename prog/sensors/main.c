@@ -256,7 +256,7 @@ int main(int argc, char *argv[])
 		{ 0, 0, 0, 0 }
 	};
 
-	setlocale(LC_CTYPE, "");
+	setlocale(LC_ALL, "");
 
 	do_raw = 0;
 	do_sets = 0;
