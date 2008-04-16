@@ -27,7 +27,7 @@ case "$1" in
   	if [ -f $CONF ] && [ -n "`grep INTERVAL $CONF | cut -d= -f2`" ]; then
 		log_daemon_msg "Starting $DESC" "$NAME"
 
-		start-stop-daemon --start --quiet --background --pidfile $PIDFILE --exec $DAEMON
+		start-stop-daemon --start --quiet --background --pidfile $PIDFILE --startas $DAEMON
 		log_end_msg $?
 	else
 		if [ "$VERBOSE" != no ]; then
@@ -37,7 +37,7 @@ case "$1" in
 	;;
   stop)
 	log_daemon_msg "Stopping $DESC" "$NAME"
-	start-stop-daemon --stop --quiet --pidfile $PIDFILE --oknodo --exec $DAEMON
+	start-stop-daemon --stop --quiet --pidfile $PIDFILE --oknodo --startas $DAEMON
 	log_end_msg $?
 	;;
   restart)
@@ -46,7 +46,7 @@ case "$1" in
 	$0 start
 	;;
   force-reload)
-	if start-stop-daemon --stop --test --quiet --pidfile $PIDFILE --exec $DAEMON ; then
+	if start-stop-daemon --stop --test --quiet --pidfile $PIDFILE --startas $DAEMON ; then
 		$0 restart
 	fi
 	;;
