@@ -10,6 +10,8 @@ clean:
 	
 	$(MAKE) clean PROG_EXTRA=sensord
 	
+	QUILT_PATCHES=debian/patches quilt pop -a -R || test $$? = 2
+
 	rm -f *-stamp
 	dh_clean 
 
@@ -19,6 +21,8 @@ clean:
 build: build-stamp
 build-stamp:
 	dh_testdir
+
+	QUILT_PATCHES=debian/patches quilt push -a || test $$? = 2
 
 	# binary programs and librairies
 	$(MAKE) user \

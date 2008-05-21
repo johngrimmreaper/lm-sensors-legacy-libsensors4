@@ -15,12 +15,14 @@
 
     You should have received a copy of the GNU General Public License
     along with this program; if not, write to the Free Software
-    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+    MA 02110-1301 USA.
 */
 
 #include <locale.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <errno.h>
 #include "sensors.h"
 #include "data.h"
@@ -34,10 +36,34 @@
 #define DEFAULT_CONFIG_FILE	ETCDIR "/sensors3.conf"
 #define ALT_CONFIG_FILE		ETCDIR "/sensors.conf"
 
+/* Wrapper around sensors_yyparse(), which clears the locale so that
+   the decimal numbers are always parsed properly. */
+static int sensors_parse(void)
+{
+	int res;
+	char *locale;
+
+	/* Remember the current locale and clear it */
+	locale = setlocale(LC_ALL, NULL);
+	if (locale) {
+		locale = strdup(locale);
+		setlocale(LC_ALL, "C");
+	}
+
+	res = sensors_yyparse();
+
+	/* Restore the old locale */
+	if (locale) {
+		setlocale(LC_ALL, locale);
+		free(locale);
+	}
+
+	return res;
+}
+
 int sensors_init(FILE *input)
 {
 	int res;
-	char *locale = NULL;
 
 	if (!sensors_init_sysfs())
 		return -SENSORS_ERR_KERNEL;
@@ -45,17 +71,10 @@ int sensors_init(FILE *input)
 	    (res = sensors_read_sysfs_chips()))
 		goto exit_cleanup;
 
-	/* Read the current locale */
-	locale = setlocale(LC_ALL, NULL);
-	if (locale)
-		locale = strdup(locale);
-	/* Set the locale to C */
-	setlocale(LC_ALL, "C");
-
 	res = -SENSORS_ERR_PARSE;
 	if (input) {
 		if (sensors_scanner_init(input) ||
-		    sensors_yyparse())
+		    sensors_parse())
 			goto exit_cleanup;
 	} else {
 		/* No configuration provided, use default */
@@ -64,7 +83,7 @@ int sensors_init(FILE *input)
 			input = fopen(ALT_CONFIG_FILE, "r");
 		if (input) {
 			if (sensors_scanner_init(input) ||
-			    sensors_yyparse()) {
+			    sensors_parse()) {
 				fclose(input);
 				goto exit_cleanup;
 			}
@@ -72,21 +91,11 @@ int sensors_init(FILE *input)
 		}
 	}
 
-	/* Restore the old locale */
-	if (locale) {
-		setlocale(LC_ALL, locale);
-		free(locale);
-	}
 	if ((res = sensors_substitute_busses()))
 		goto exit_cleanup;
 	return 0;
 
 exit_cleanup:
-	/* Restore the old locale */
-	if (locale) {
-		setlocale(LC_ALL, locale);
-		free(locale);
-	}
 	sensors_cleanup();
 	return res;
 }

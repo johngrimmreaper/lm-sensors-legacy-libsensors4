@@ -13,7 +13,8 @@
 #
 #  You should have received a copy of the GNU General Public License
 #  along with this program; if not, write to the Free Software
-#  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+#  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+#  MA 02110-1301 USA.
 
 # Note that MODULE_DIR (the directory in which this file resides) is a
 # 'simply expanded variable'. That means that its value is substituted
@@ -34,14 +35,11 @@ install-etc:
 	fi
 	$(MKDIR) $(DESTDIR)$(BINDIR)
 	$(INSTALL) -m 755 $(ETC_DIR)/sensors-conf-convert $(DESTDIR)$(BINDIR)
-	$(MKDIR) $(DESTDIR)$(MANDIR)/man1
-	$(INSTALL) -m 644 $(ETC_DIR)/sensors-conf-convert.1 $(DESTDIR)$(MANDIR)/man1
 
 user_install :: install-etc
 
 uninstall-etc:
 	$(RM) $(DESTDIR)$(BINDIR)/sensors-conf-convert
-	$(RM) $(DESTDIR)$(MANDIR)/man1/sensors-conf-convert.1
 
 user_uninstall :: uninstall-etc
 

@@ -13,7 +13,8 @@
 #
 #  You should have received a copy of the GNU General Public License
 #  along with this program; if not, write to the Free Software
-#  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+#  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+#  MA 02110-1301 USA.
 
 # Note that MODULE_DIR (the directory in which this file resides) is a
 # 'simply expanded variable'. That means that its value is substituted
@@ -32,7 +33,7 @@ LIBMAN5FILES := $(MODULE_DIR)/sensors.conf.5
 # changed in a backward incompatible way.  The interface is defined by
 # the public header files - in this case they are error.h and sensors.h.
 LIBMAINVER := 4
-LIBMINORVER := 0.1
+LIBMINORVER := 0.2
 LIBVER := $(LIBMAINVER).$(LIBMINORVER)
 
 # The static lib name, the shared lib name, and the internal ('so') name of

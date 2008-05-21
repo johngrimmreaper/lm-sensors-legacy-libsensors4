@@ -15,7 +15,8 @@
 
     You should have received a copy of the GNU General Public License
     along with this program; if not, write to the Free Software
-    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+    MA 02110-1301 USA.
 */
 
 #ifndef LIB_SENSORS_SENSORS_H
@@ -30,18 +31,19 @@
    when the API + ABI breaks), the third digit is incremented to track small
    API additions like new flags / enum values. The second digit is for tracking
    larger additions like new methods. */
-#define SENSORS_API_VERSION 0x400
+#define SENSORS_API_VERSION		0x401
 
-#define SENSORS_CHIP_NAME_PREFIX_ANY NULL
-#define SENSORS_CHIP_NAME_ADDR_ANY -1
+#define SENSORS_CHIP_NAME_PREFIX_ANY	NULL
+#define SENSORS_CHIP_NAME_ADDR_ANY	(-1)
 
-#define SENSORS_BUS_TYPE_ANY	(-1)
-#define SENSORS_BUS_TYPE_I2C	0
-#define SENSORS_BUS_TYPE_ISA	1
-#define SENSORS_BUS_TYPE_PCI	2
-#define SENSORS_BUS_TYPE_SPI	3
-#define SENSORS_BUS_NR_ANY	(-1)
-#define SENSORS_BUS_NR_IGNORE	(-2)
+#define SENSORS_BUS_TYPE_ANY		(-1)
+#define SENSORS_BUS_TYPE_I2C		0
+#define SENSORS_BUS_TYPE_ISA		1
+#define SENSORS_BUS_TYPE_PCI		2
+#define SENSORS_BUS_TYPE_SPI		3
+#define SENSORS_BUS_TYPE_VIRTUAL	4
+#define SENSORS_BUS_NR_ANY		(-1)
+#define SENSORS_BUS_NR_IGNORE		(-2)
 
 #ifdef __cplusplus
 extern "C" {
@@ -130,6 +132,8 @@ typedef enum sensors_feature_type {
 	SENSORS_FEATURE_IN		= 0x00,
 	SENSORS_FEATURE_FAN		= 0x01,
 	SENSORS_FEATURE_TEMP		= 0x02,
+	SENSORS_FEATURE_POWER		= 0x03,
+	SENSORS_FEATURE_ENERGY		= 0x04,
 	SENSORS_FEATURE_VID		= 0x10,
 	SENSORS_FEATURE_BEEP_ENABLE	= 0x18,
 	SENSORS_FEATURE_UNKNOWN		= INT_MAX,
@@ -167,6 +171,14 @@ typedef enum sensors_subfeature_type {
 	SENSORS_SUBFEATURE_TEMP_TYPE,
 	SENSORS_SUBFEATURE_TEMP_OFFSET,
 	SENSORS_SUBFEATURE_TEMP_BEEP,
+
+	SENSORS_SUBFEATURE_POWER_AVERAGE = SENSORS_FEATURE_POWER << 8,
+	SENSORS_SUBFEATURE_POWER_AVERAGE_HIGHEST,
+	SENSORS_SUBFEATURE_POWER_AVERAGE_LOWEST,
+
+	SENSORS_SUBFEATURE_POWER_AVERAGE_INTERVAL = (SENSORS_FEATURE_POWER << 8) | 0x80,
+
+	SENSORS_SUBFEATURE_ENERGY_INPUT = SENSORS_FEATURE_ENERGY << 8,
 
 	SENSORS_SUBFEATURE_VID = SENSORS_FEATURE_VID << 8,
 

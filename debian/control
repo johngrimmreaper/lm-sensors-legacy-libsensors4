@@ -1,7 +1,7 @@
 Source: lm-sensors-3
 Section: utils
 Priority: extra
-Build-Depends: bison, flex, librrd2-dev, debhelper (>= 4.1.16)
+Build-Depends: debhelper (>= 4.1.16), quilt, bison, flex, librrd2-dev
 Maintainer: Aurelien Jarno <aurel32@debian.org>
 Standards-Version: 3.7.3.0
 Homepage: http://www.lm-sensors.org

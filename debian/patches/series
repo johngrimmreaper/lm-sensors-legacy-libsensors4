@@ -1,0 +1,6 @@
+01-sensors-conf-convert-manpage.patch
+02-sensors-conf-convert-improvements.patch
+03-sensord-loadavg.patch
+04-sensord-log.patch
+05-sensord-manpage.patch
+06-sensors-detect.patch

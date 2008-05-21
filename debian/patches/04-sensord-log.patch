@@ -1,0 +1,20 @@
+--- lm-sensors-3-3.0.1.orig/prog/sensord/sense.c
++++ lm-sensors-3-3.0.1/prog/sensord/sense.c
+@@ -197,9 +197,14 @@
+ (void) {
+   int ret = 0;
+ 
+-  sensorLog (LOG_DEBUG, "sensor sweep started"); /* only logged in debug mode */
++/*
++ * Debian mod: kill the debug messages, since they spam syslog every
++ * minute. -- JEH
++ */
++  
++/*  sensorLog (LOG_DEBUG, "sensor sweep started"); */
+   ret = doChips (DO_SCAN);
+-  sensorLog (LOG_DEBUG, "sensor sweep finished");
++/*  sensorLog (LOG_DEBUG, "sensor sweep finished"); */
+ 
+   return ret;
+ }
+

@@ -1,7 +1,7 @@
 /*
     sysfs.c - Part of libsensors, a library for reading Linux sensor data
     Copyright (c) 2005 Mark M. Hoffman <mhoffman@lightlink.com>
-    Copyright (C) 2007 Jean Delvare <khali@linux-fr.org>
+    Copyright (C) 2007-2008 Jean Delvare <khali@linux-fr.org>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,7 +15,8 @@
 
     You should have received a copy of the GNU General Public License
     along with this program; if not, write to the Free Software
-    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+    MA 02110-1301 USA.
 */
 
 /* this define needed for strndup() */
@@ -63,7 +64,7 @@ static char *sysfs_read_attr(const char *device, const char *attr)
 	/* Last byte is a '\n'; chop that off */
 	p = strndup(buf, strlen(buf) - 1);
 	if (!p)
-		sensors_fatal_error(__FUNCTION__, "out of memory");
+		sensors_fatal_error(__func__, "Out of memory");
 	return p;
 }
 
@@ -137,24 +138,33 @@ char sensors_sysfs_mount[NAME_MAX];
 
 #define MAX_SENSORS_PER_TYPE	20
 #define MAX_SUBFEATURES		8
-/* Room for all 3 types (in, fan, temp) with all their subfeatures + VID
-   + misc features */
+#define MAX_SENSOR_TYPES	5
+/* Room for all 5 types (in, fan, temp, power, energy) with all their
+   subfeatures + VID + misc features */
 #define ALL_POSSIBLE_SUBFEATURES \
-				(MAX_SENSORS_PER_TYPE * MAX_SUBFEATURES * 6 \
-				 + MAX_SENSORS_PER_TYPE + 1)
+				(MAX_SENSORS_PER_TYPE * MAX_SUBFEATURES * \
+				 MAX_SENSOR_TYPES * 2 + \
+				 MAX_SENSORS_PER_TYPE + 1)
 
 static
 int get_type_scaling(sensors_subfeature_type type)
 {
+	/* Multipliers for subfeatures */
 	switch (type & 0xFF80) {
 	case SENSORS_SUBFEATURE_IN_INPUT:
 	case SENSORS_SUBFEATURE_TEMP_INPUT:
 		return 1000;
 	case SENSORS_SUBFEATURE_FAN_INPUT:
 		return 1;
+	case SENSORS_SUBFEATURE_POWER_AVERAGE:
+	case SENSORS_SUBFEATURE_ENERGY_INPUT:
+		return 1000000;
 	}
 
+	/* Multipliers for second class subfeatures
+	   that need their own multiplier */
 	switch (type) {
+	case SENSORS_SUBFEATURE_POWER_AVERAGE_INTERVAL:
 	case SENSORS_SUBFEATURE_VID:
 	case SENSORS_SUBFEATURE_TEMP_OFFSET:
 		return 1000;
@@ -172,6 +182,8 @@ char *get_feature_name(sensors_feature_type ftype, char *sfname)
 	case SENSORS_FEATURE_IN:
 	case SENSORS_FEATURE_FAN:
 	case SENSORS_FEATURE_TEMP:
+	case SENSORS_FEATURE_POWER:
+	case SENSORS_FEATURE_ENERGY:
 		underscore = strchr(sfname, '_');
 		name = strndup(sfname, underscore - sfname);
 		break;
@@ -231,6 +243,19 @@ static const struct subfeature_type_match fan_matches[] = {
 	{ NULL, 0 }
 };
 
+static const struct subfeature_type_match power_matches[] = {
+	{ "average", SENSORS_SUBFEATURE_POWER_AVERAGE },
+	{ "average_highest", SENSORS_SUBFEATURE_POWER_AVERAGE_HIGHEST },
+	{ "average_lowest", SENSORS_SUBFEATURE_POWER_AVERAGE_LOWEST },
+	{ "average_interval", SENSORS_SUBFEATURE_POWER_AVERAGE_INTERVAL },
+	{ NULL, 0 }
+};
+
+static const struct subfeature_type_match energy_matches[] = {
+	{ "input", SENSORS_SUBFEATURE_ENERGY_INPUT },
+	{ NULL, 0 }
+};
+
 static const struct subfeature_type_match cpu_matches[] = {
 	{ "vid", SENSORS_SUBFEATURE_VID },
 	{ NULL, 0 }
@@ -241,6 +266,8 @@ static struct feature_type_match matches[] = {
 	{ "in%d%c", in_matches },
 	{ "fan%d%c", fan_matches },
 	{ "cpu%d%c", cpu_matches },
+	{ "power%d%c", power_matches },
+	{ "energy%d%c", energy_matches },
 };
 
 /* Return the subfeature type and channel number based on the subfeature
@@ -311,7 +338,7 @@ static int sensors_read_dynamic_chip(sensors_chip_features *chip,
 	all_subfeatures = calloc(ALL_POSSIBLE_SUBFEATURES,
 				 sizeof(sensors_subfeature));
 	if (!all_subfeatures)
-		sensors_fatal_error(__FUNCTION__, "Out of memory");
+		sensors_fatal_error(__func__, "Out of memory");
 
 	while ((ent = readdir(dir))) {
 		char *name = ent->d_name;
@@ -326,17 +353,19 @@ static int sensors_read_dynamic_chip(sensors_chip_features *chip,
 
 		/* Adjust the channel number */
 		switch (sftype & 0xFF00) {
-			case SENSORS_SUBFEATURE_FAN_INPUT:
-			case SENSORS_SUBFEATURE_TEMP_INPUT:
-				nr--;
-				break;
+		case SENSORS_SUBFEATURE_FAN_INPUT:
+		case SENSORS_SUBFEATURE_TEMP_INPUT:
+		case SENSORS_SUBFEATURE_POWER_AVERAGE:
+		case SENSORS_SUBFEATURE_ENERGY_INPUT:
+			nr--;
+			break;
 		}
 
 		if (nr < 0 || nr >= MAX_SENSORS_PER_TYPE) {
 			/* More sensors of one type than MAX_SENSORS_PER_TYPE,
 			   we have to ignore it */
 #ifdef DEBUG
-			sensors_fatal_error(__FUNCTION__,
+			sensors_fatal_error(__func__,
 					    "Increase MAX_SENSORS_PER_TYPE!");
 #endif
 			continue;
@@ -346,11 +375,12 @@ static int sensors_read_dynamic_chip(sensors_chip_features *chip,
 		   sorted table */
 		switch (sftype) {
 		case SENSORS_SUBFEATURE_VID:
-			i = nr + MAX_SENSORS_PER_TYPE * MAX_SUBFEATURES * 6;
+			i = nr + MAX_SENSORS_PER_TYPE * MAX_SUBFEATURES *
+			    MAX_SENSOR_TYPES * 2;
 			break;
 		case SENSORS_SUBFEATURE_BEEP_ENABLE:
-			i = MAX_SENSORS_PER_TYPE * MAX_SUBFEATURES * 6 +
-			    MAX_SENSORS_PER_TYPE;
+			i = MAX_SENSORS_PER_TYPE * MAX_SUBFEATURES *
+			    MAX_SENSOR_TYPES * 2 + MAX_SENSORS_PER_TYPE;
 			break;
 		default:
 			i = (sftype >> 8) * MAX_SENSORS_PER_TYPE *
@@ -361,8 +391,7 @@ static int sensors_read_dynamic_chip(sensors_chip_features *chip,
 
 		if (all_subfeatures[i].name) {
 #ifdef DEBUG
-			sensors_fatal_error(__FUNCTION__,
-					    "Duplicate subfeature");
+			sensors_fatal_error(__func__, "Duplicate subfeature");
 #endif
 			continue;
 		}
@@ -389,7 +418,8 @@ static int sensors_read_dynamic_chip(sensors_chip_features *chip,
 		if (!all_subfeatures[i].name)
 			continue;
 
-		if (i >= MAX_SENSORS_PER_TYPE * MAX_SUBFEATURES * 6 ||
+		if (i >= MAX_SENSORS_PER_TYPE * MAX_SUBFEATURES *
+		    MAX_SENSOR_TYPES * 2 ||
 		    i / (MAX_SUBFEATURES * 2) != prev_slot) {
 			fnum++;
 			prev_slot = i / (MAX_SUBFEATURES * 2);
@@ -399,7 +429,7 @@ static int sensors_read_dynamic_chip(sensors_chip_features *chip,
 	dyn_subfeatures = calloc(sfnum, sizeof(sensors_subfeature));
 	dyn_features = calloc(fnum, sizeof(sensors_feature));
 	if (!dyn_subfeatures || !dyn_features)
-		sensors_fatal_error(__FUNCTION__, "Out of memory");
+		sensors_fatal_error(__func__, "Out of memory");
 
 	/* Copy from the sparse array to the compact array */
 	sfnum = 0;
@@ -410,7 +440,8 @@ static int sensors_read_dynamic_chip(sensors_chip_features *chip,
 			continue;
 
 		/* New main feature? */
-		if (i >= MAX_SENSORS_PER_TYPE * MAX_SUBFEATURES * 6 ||
+		if (i >= MAX_SENSORS_PER_TYPE * MAX_SUBFEATURES *
+		    MAX_SENSOR_TYPES * 2 ||
 		    i / (MAX_SUBFEATURES * 2) != prev_slot) {
 			ftype = all_subfeatures[i].type >> 8;
 			fnum++;
@@ -474,7 +505,16 @@ static int sensors_read_one_sysfs_chip(const char *dev_path,
 
 	entry.chip.path = strdup(hwmon_path);
 	if (!entry.chip.path)
-		sensors_fatal_error(__FUNCTION__, "out of memory");
+		sensors_fatal_error(__func__, "Out of memory");
+
+	if (dev_path == NULL) {
+		/* Virtual device */
+		entry.chip.bus.type = SENSORS_BUS_TYPE_VIRTUAL;
+		entry.chip.bus.nr = 0;
+		/* For now we assume that virtual devices are unique */
+		entry.chip.addr = 0;
+		goto done;
+	}
 
 	/* Find bus type */
 	snprintf(linkpath, NAME_MAX, "%s/subsystem", dev_path);
@@ -525,18 +565,19 @@ static int sensors_read_one_sysfs_chip(const char *dev_path,
 		/* SPI */
 		entry.chip.bus.type = SENSORS_BUS_TYPE_SPI;
 	} else
-	if ((!subsys || !strcmp(subsys, "platform"))) {
-		/* must be new ISA (platform driver) */
-		if (sscanf(dev_name, "%*[a-z0-9_].%d", &entry.chip.addr) != 1)
-			entry.chip.addr = 0;
-		entry.chip.bus.type = SENSORS_BUS_TYPE_ISA;
-		entry.chip.bus.nr = 0;
-	} else
 	if ((!subsys || !strcmp(subsys, "pci")) &&
 	    sscanf(dev_name, "%x:%x:%x.%x", &domain, &bus, &slot, &fn) == 4) {
 		/* PCI */
 		entry.chip.addr = (domain << 16) + (bus << 8) + (slot << 3) + fn;
 		entry.chip.bus.type = SENSORS_BUS_TYPE_PCI;
+		entry.chip.bus.nr = 0;
+	} else
+	if ((!subsys || !strcmp(subsys, "platform") ||
+			!strcmp(subsys, "of_platform"))) {
+		/* must be new ISA (platform driver) */
+		if (sscanf(dev_name, "%*[a-z0-9_].%d", &entry.chip.addr) != 1)
+			entry.chip.addr = 0;
+		entry.chip.bus.type = SENSORS_BUS_TYPE_ISA;
 		entry.chip.bus.nr = 0;
 	} else {
 		/* Ignore unknown device */
@@ -544,6 +585,7 @@ static int sensors_read_one_sysfs_chip(const char *dev_path,
 		goto exit_free;
 	}
 
+done:
 	if (sensors_read_dynamic_chip(&entry, hwmon_path) < 0)
 		goto exit_free;
 	if (!entry.subfeature) { /* No subfeature, discard chip */
@@ -592,16 +634,20 @@ static int sensors_add_hwmon_device(const char *path, const char *classdev)
 
 	snprintf(linkpath, NAME_MAX, "%s/device", path);
 	dev_len = readlink(linkpath, device, NAME_MAX - 1);
-	if (dev_len < 0)
-		return -SENSORS_ERR_KERNEL;
-	device[dev_len] = '\0';
-	device_p = strrchr(device, '/') + 1;
+	if (dev_len < 0) {
+		/* No device link? Treat as virtual */
+		err = sensors_read_one_sysfs_chip(NULL, NULL, path);
+	} else {
+		device[dev_len] = '\0';
+		device_p = strrchr(device, '/') + 1;
 
-	/* The attributes we want might be those of the hwmon class device,
-	   or those of the device itself. */
-	err = sensors_read_one_sysfs_chip(linkpath, device_p, path);
-	if (err == 0)
-		err = sensors_read_one_sysfs_chip(linkpath, device_p, linkpath);
+		/* The attributes we want might be those of the hwmon class
+		   device, or those of the device itself. */
+		err = sensors_read_one_sysfs_chip(linkpath, device_p, path);
+		if (err == 0)
+			err = sensors_read_one_sysfs_chip(linkpath, device_p,
+							  linkpath);
+	}
 	if (err < 0)
 		return err;
 	return 0;

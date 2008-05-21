@@ -1,0 +1,37 @@
+--- lm-sensors-3-3.0.1.orig/prog/sensord/rrd.c
++++ lm-sensors-3-3.0.1/prog/sensord/rrd.c
+@@ -202,6 +202,10 @@
+         min = "0";
+         max = "250";
+         break;
++      case DataType_loadavg:
++        min = "0";
++	max = "U";
++	break;
+       default:
+         min = max = "U";
+         break;
+@@ -217,8 +221,11 @@
+   int ret = 0;
+   struct ds data = { 0, argv};
+   ret = applyToFeatures (rrdGetSensors_DS, &data);
+-  if (!ret && doLoad)
+-    ret = rrdGetSensors_DS (&data, LOADAVG, LOAD_AVERAGE, NULL);
++  if (!ret && doLoad) {
++    FeatureDescriptor feature;
++    feature.type = DataType_loadavg;
++    ret = rrdGetSensors_DS (&data, LOADAVG, LOAD_AVERAGE, &feature);
++  }
+   return ret ? -1 : data.num;
+ }
+ 
+--- lm-sensors-3-3.0.1.orig/prog/sensord/sensord.h
++++ lm-sensors-3-3.0.1/prog/sensord/sensord.h
+@@ -79,6 +79,7 @@
+   DataType_voltage = 0,
+   DataType_rpm,
+   DataType_temperature,
++  DataType_loadavg,
+   DataType_other = -1
+ } DataType;
+ 
