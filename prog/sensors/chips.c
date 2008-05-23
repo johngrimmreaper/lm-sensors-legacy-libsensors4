@@ -16,12 +16,14 @@
 
     You should have received a copy of the GNU General Public License
     along with this program; if not, write to the Free Software
-    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+    MA 02110-1301 USA.
 */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "main.h"
 #include "chips.h"
@@ -400,6 +402,126 @@ static void print_chip_fan(const sensors_chip_name *name,
 	printf("\n");
 }
 
+struct scale_table {
+	double upper_bound;
+	const char *unit;
+};
+
+static void scale_value(double *value, const char **prefixstr)
+{
+	double abs_value = fabs(*value);
+	double divisor = 1e-9;
+	static struct scale_table prefix_scales[] = {
+		{1e-6, "n"},
+		{1e-3, "u"},
+		{1,    "m"},
+		{1e3,   ""},
+		{1e6,  "k"},
+		{1e9,  "M"},
+		{0,    "G"}, /* no upper bound */
+	};
+	struct scale_table *scale = prefix_scales;
+
+	while (scale->upper_bound && abs_value > scale->upper_bound) {
+		divisor = scale->upper_bound;
+		scale++;
+	}
+
+	*value /= divisor;
+	*prefixstr = scale->unit;
+}
+
+static void print_chip_power(const sensors_chip_name *name,
+			     const sensors_feature *feature,
+			     int label_size)
+{
+	double val;
+	int need_space = 0;
+	const sensors_subfeature *sf, *sfmin, *sfmax, *sfint;
+	char *label;
+	const char *unit;
+
+	if (!(label = sensors_get_label(name, feature))) {
+		fprintf(stderr, "ERROR: Can't get label of feature %s!\n",
+			feature->name);
+		return;
+	}
+	print_label(label, label_size);
+	free(label);
+
+	sf = sensors_get_subfeature(name, feature,
+				    SENSORS_SUBFEATURE_POWER_AVERAGE);
+	if (sf) {
+		val = get_value(name, sf);
+		scale_value(&val, &unit);
+		printf("%6.2f %sW", val, unit);
+	} else
+		printf("     N/A");
+
+	sfmin = sensors_get_subfeature(name, feature,
+				      SENSORS_SUBFEATURE_POWER_AVERAGE_HIGHEST);
+	sfmax = sensors_get_subfeature(name, feature,
+				       SENSORS_SUBFEATURE_POWER_AVERAGE_LOWEST);
+	sfint = sensors_get_subfeature(name, feature,
+				     SENSORS_SUBFEATURE_POWER_AVERAGE_INTERVAL);
+	if (sfmin || sfmax || sfint) {
+		printf("  (");
+
+		if (sfmin) {
+			val = get_value(name, sfmin);
+			scale_value(&val, &unit);
+			printf("min = %6.2f %sW", val, unit);
+			need_space = 1;
+		}
+
+		if (sfmax) {
+			val = get_value(name, sfmax);
+			scale_value(&val, &unit);
+			printf("%smax = %6.2f %sW", (need_space ? ", " : ""),
+			       val, unit);
+			need_space = 1;
+		}
+
+		if (sfint) {
+			printf("%sinterval = %6.2f s", (need_space ? ", " : ""),
+			       get_value(name, sfint));
+			need_space = 1;
+		}
+		printf(")");
+	}
+
+	printf("\n");
+}
+
+static void print_chip_energy(const sensors_chip_name *name,
+			      const sensors_feature *feature,
+			      int label_size)
+{
+	double val;
+	const sensors_subfeature *sf;
+	char *label;
+	const char *unit;
+
+	if (!(label = sensors_get_label(name, feature))) {
+		fprintf(stderr, "ERROR: Can't get label of feature %s!\n",
+			feature->name);
+		return;
+	}
+	print_label(label, label_size);
+	free(label);
+
+	sf = sensors_get_subfeature(name, feature,
+				    SENSORS_SUBFEATURE_ENERGY_INPUT);
+	if (sf) {
+		val = get_value(name, sf);
+		scale_value(&val, &unit);
+		printf("%6.2f %sJ", val, unit);
+	} else
+		printf("     N/A");
+
+	printf("\n");
+}
+
 static void print_chip_vid(const sensors_chip_name *name,
 			   const sensors_feature *feature,
 			   int label_size)
@@ -466,6 +588,12 @@ void print_chip(const sensors_chip_name *name)
 			break;
 		case SENSORS_FEATURE_BEEP_ENABLE:
 			print_chip_beep_enable(name, feature, label_size);
+			break;
+		case SENSORS_FEATURE_POWER:
+			print_chip_power(name, feature, label_size);
+			break;
+		case SENSORS_FEATURE_ENERGY:
+			print_chip_energy(name, feature, label_size);
 			break;
 		default:
 			continue;

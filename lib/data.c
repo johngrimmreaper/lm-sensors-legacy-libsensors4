@@ -15,7 +15,8 @@
 
     You should have received a copy of the GNU General Public License
     along with this program; if not, write to the Free Software
-    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+    MA 02110-1301 USA.
 */
 
 /* this define needed for strndup() */
@@ -108,6 +109,8 @@ int sensors_parse_chip_name(const char *name, sensors_chip_name *res)
 		res->bus.type = SENSORS_BUS_TYPE_PCI;
 	else if (!strncmp(name, "spi", dash - name))
 		res->bus.type = SENSORS_BUS_TYPE_SPI;
+	else if (!strncmp(name, "virtual", dash - name))
+		res->bus.type = SENSORS_BUS_TYPE_VIRTUAL;
 	else
 		goto ERROR;
 	name = dash + 1;
@@ -168,6 +171,9 @@ int sensors_snprintf_chip_name(char *str, size_t size,
 	case SENSORS_BUS_TYPE_SPI:
 		return snprintf(str, size, "%s-spi-%hd-%x", chip->prefix,
 				chip->bus.nr, chip->addr);
+	case SENSORS_BUS_TYPE_VIRTUAL:
+		return snprintf(str, size, "%s-virtual-%x", chip->prefix,
+				chip->addr);
 	}
 
 	return -SENSORS_ERR_CHIP_NAME;

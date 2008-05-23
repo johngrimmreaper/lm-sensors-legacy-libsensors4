@@ -1,6 +1,37 @@
 lm-sensors CHANGES file
 -----------------------
 
+3.0.2 (2008-05-18)
+  documentation: Delete the FAQ, now maintained on the wiki
+  libsensors: Use __func__ instead of __FUNCTION__
+              Parse the configuration file in C locale
+              Late compute statements override early ones
+              Support virtual hwmon devices (#2309)
+              Support power and energy sensors
+              Support DOS-style configuration files again (#2284)
+  pwmconfig: Don't create the configuration file before it's needed
+             Don't preserve configuration file customizations
+             Fix permissions of the configuration file
+             Don't start if fancontrol is running (#2299)
+  fancontrol: Don't start if already running (#2299)
+              Delete fancontrol.pid at exit time (#2299)
+  sensord: Fix support of multiple chip names on the command line (#2321)
+  sensors: Print energy and power sensors with automatically scaled units
+  sensors-detect: Add SMSC SCH5027D detection
+                  Do not access I/O ports on PPC
+                  Move south bridge sensor detection to the right section
+                  Run chip_special_cases() earlier
+                  New device ID for the SMSC SCH5317
+                  Add SMSC SCH5127 detection
+                  Add National Semiconductor LM64 detection
+                  Add Asus F8000 detection
+                  Add Intel ICH10 (bus) detection
+                  Don't probe I2C addresses 0x40-0x47
+                  Fix the parsing of I2C addresses not to scan
+                  Detect and skip 1-register-only I2C devices
+                  Avoid SMBus word transactions where possible
+                  Add Dallas DS1631 detection
+
 3.0.1 (2008-01-28)
   documentation: Update the application writing guidelines
   libsensors: No longer depend on libsysfs (#2262)

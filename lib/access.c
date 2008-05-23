@@ -15,7 +15,8 @@
 
     You should have received a copy of the GNU General Public License
     along with this program; if not, write to the Free Software
-    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+    MA 02110-1301 USA.
 */
 
 #include <stdlib.h>
@@ -248,7 +249,8 @@ int sensors_get_value(const sensors_chip_name *name, int subfeat_nr,
 					subfeature->mapping);
 
 		chip = NULL;
-		while ((chip = sensors_for_all_config_chips(name, chip)))
+		while (!expr &&
+		       (chip = sensors_for_all_config_chips(name, chip)))
 			for (i = 0; i < chip->computes_count; i++) {
 				if (!strcmp(feature->name,
 					    chip->computes[i].name)) {
@@ -299,7 +301,8 @@ int sensors_set_value(const sensors_chip_name *name, int subfeat_nr,
 					subfeature->mapping);
 
 		chip = NULL;
-		while ((chip = sensors_for_all_config_chips(name, chip)))
+		while (!expr &&
+		       (chip = sensors_for_all_config_chips(name, chip)))
 			for (i = 0; i < chip->computes_count; i++) {
 				if (!strcmp(feature->name,
 					    chip->computes[i].name)) {
@@ -344,6 +347,8 @@ const char *sensors_get_adapter_name(const sensors_bus_id *bus)
 	   so we don't have any custom string to return. */
 	case SENSORS_BUS_TYPE_SPI:
 		return "SPI adapter";
+	case SENSORS_BUS_TYPE_VIRTUAL:
+		return "Virtual device";
 	}
 
 	/* bus types with several instances */

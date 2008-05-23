@@ -17,7 +17,8 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+ * MA 02110-1301 USA.
  */
 
 /*
@@ -135,9 +136,10 @@ static int
 applyToFeatures
 (FeatureFN fn, void *data) {
   const sensors_chip_name *chip;
-  int i = 0, j, ret = 0, num = 0;
+  int i, j, ret = 0, num = 0;
 
   for (j = 0; (ret == 0) && (j < numChipNames); ++ j) {
+    i = 0;
     while ((ret == 0) && ((chip = sensors_get_detected_chips (&chipNames[j], &i)) != NULL)) {
       int index0, chipindex = -1;
       for (index0 = 0; knownChips[index0].features; ++ index0)
