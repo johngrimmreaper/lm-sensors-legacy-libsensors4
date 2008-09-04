@@ -11,6 +11,7 @@ clean:
 	$(MAKE) clean PROG_EXTRA=sensord
 	
 	QUILT_PATCHES=debian/patches quilt pop -a -R || test $$? = 2
+	rm -rf .pc/
 
 	rm -f *-stamp
 	dh_clean 
@@ -81,7 +82,7 @@ binary-arch: build install
 	dh_installdocs -s -XCVS
 	dh_installexamples -s -XCVS -XModule.mk
 	dh_installmodules -n -s --name=i2c
-	dh_installinit -psensord
+	dh_installinit -psensord -- start 20 2 3 4 5 . stop 20 1 .
 	dh_installinit -plm-sensors --name=fancontrol --no-restart-on-upgrade
 	dh_installinit -plm-sensors --name=lm-sensors --no-start -- start 47 S .
 	dh_installman -s

@@ -1,3 +1,14 @@
+lm-sensors-3 (1:3.0.2-2) unstable; urgency=low
+
+  * Remove stop links from rc0 and rc6 (closes: bug#495547).
+  * Add a NEWS.Debian file from libsensors4 explaining how to
+    generate /etc/sensors3.conf from /etc/sensors.conf (closes:
+    bug#496703).
+  * Bumped Standards-version to 3.8.0
+    - Add debian/README.source
+
+ -- Aurelien Jarno <aurel32@debian.org>  Thu, 04 Sep 2008 12:40:12 +0200
+
 lm-sensors-3 (1:3.0.2-1) unstable; urgency=low
 
   * New upstream version.
