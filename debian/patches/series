@@ -3,4 +3,5 @@
 03-sensord-loadavg.patch
 04-sensord-log.patch
 05-sensord-manpage.patch
-06-sensors-detect.patch
+06-sensors-detect-debian.patch
+07-sensors-detect-modprobe.conf.patch

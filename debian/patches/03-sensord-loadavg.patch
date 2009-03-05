@@ -1,17 +1,17 @@
---- lm-sensors-3-3.0.1.orig/prog/sensord/rrd.c
-+++ lm-sensors-3-3.0.1/prog/sensord/rrd.c
-@@ -202,6 +202,10 @@
-         min = "0";
+--- a/prog/sensord/rrd.c
++++ b/prog/sensord/rrd.c
+@@ -204,6 +204,10 @@
+         min = "-100";
          max = "250";
          break;
 +      case DataType_loadavg:
 +        min = "0";
-+	max = "U";
-+	break;
++        max = "U";
++        break;
        default:
          min = max = "U";
          break;
-@@ -217,8 +221,11 @@
+@@ -219,8 +223,11 @@
    int ret = 0;
    struct ds data = { 0, argv};
    ret = applyToFeatures (rrdGetSensors_DS, &data);
@@ -25,9 +25,9 @@
    return ret ? -1 : data.num;
  }
  
---- lm-sensors-3-3.0.1.orig/prog/sensord/sensord.h
-+++ lm-sensors-3-3.0.1/prog/sensord/sensord.h
-@@ -79,6 +79,7 @@
+--- a/prog/sensord/sensord.h
++++ b/prog/sensord/sensord.h
+@@ -80,6 +80,7 @@
    DataType_voltage = 0,
    DataType_rpm,
    DataType_temperature,

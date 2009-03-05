@@ -4,15 +4,14 @@
 
 #export DH_VERBOSE=1
 
-clean:
+include /usr/share/quilt/quilt.make
+
+clean: unpatch
 	dh_testdir
 	dh_testroot
 	
 	$(MAKE) clean PROG_EXTRA=sensord
 	
-	QUILT_PATCHES=debian/patches quilt pop -a -R || test $$? = 2
-	rm -rf .pc/
-
 	rm -f *-stamp
 	dh_clean 
 
@@ -20,10 +19,8 @@ clean:
 # Build everything that goes into the Debian package.  Use recursive make
 # invocations to build all of the interesting components.
 build: build-stamp
-build-stamp:
+build-stamp: $(QUILT_STAMPFN)
 	dh_testdir
-
-	QUILT_PATCHES=debian/patches quilt push -a || test $$? = 2
 
 	# binary programs and librairies
 	$(MAKE) user \
@@ -81,7 +78,6 @@ binary-arch: build install
 	dh_installchangelogs -s CHANGES
 	dh_installdocs -s -XCVS
 	dh_installexamples -s -XCVS -XModule.mk
-	dh_installmodules -n -s --name=i2c
 	dh_installinit -psensord -- start 20 2 3 4 5 . stop 20 1 .
 	dh_installinit -plm-sensors --name=fancontrol --no-restart-on-upgrade
 	dh_installinit -plm-sensors --name=lm-sensors --no-start -- start 47 S .

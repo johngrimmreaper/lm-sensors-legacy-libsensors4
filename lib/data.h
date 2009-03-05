@@ -1,7 +1,7 @@
 /*
     data.h - Part of libsensors, a Linux library for reading sensor data.
     Copyright (c) 1998, 1999  Frodo Looijaard <frodol@dds.nl>
-    Copyright (C) 2007        Jean Delvare <khali@linux-fr.org>
+    Copyright (C) 2007, 2009  Jean Delvare <khali@linux-fr.org>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,9 +23,10 @@
 #define LIB_SENSORS_DATA_H
 
 #include "sensors.h"
+#include "general.h"
 
 /* This header file contains all kinds of data structures which are used
-   for the representation of the config file data and the /proc/...
+   for the representation of the config file data and the sensors
    data. */
 
 /* Kinds of expression operators recognized */
@@ -59,12 +60,18 @@ typedef struct sensors_expr {
 	} data;
 } sensors_expr;
 
+/* Config file line reference */
+typedef struct sensors_config_line {
+	const char *filename;
+	int lineno;
+} sensors_config_line;
+
 /* Config file label declaration: a feature name, combined with the label
    value */
 typedef struct sensors_label {
 	char *name;
 	char *value;
-	int lineno;
+	sensors_config_line line;
 } sensors_label;
 
 /* Config file set declaration: a subfeature name, combined with an
@@ -72,7 +79,7 @@ typedef struct sensors_label {
 typedef struct sensors_set {
 	char *name;
 	sensors_expr *value;
-	int lineno;
+	sensors_config_line line;
 } sensors_set;
 
 /* Config file compute declaration: a feature name, combined with two
@@ -81,13 +88,13 @@ typedef struct sensors_compute {
 	char *name;
 	sensors_expr *from_proc;
 	sensors_expr *to_proc;
-	int lineno;
+	sensors_config_line line;
 } sensors_compute;
 
 /* Config file ignore declaration: a feature name */
 typedef struct sensors_ignore {
 	char *name;
-	int lineno;
+	sensors_config_line line;
 } sensors_ignore;
 
 /* A list of chip names, used to represent a config file chips declaration */
@@ -112,7 +119,7 @@ typedef struct sensors_chip {
 	sensors_ignore *ignores;
 	int ignores_count;
 	int ignores_max;
-	int lineno;
+	sensors_config_line line;
 } sensors_chip;
 
 /* Config file bus declaration: the bus type and number, combined with adapter
@@ -120,7 +127,7 @@ typedef struct sensors_chip {
 typedef struct sensors_bus {
 	char *adapter;
 	sensors_bus_id bus;
-	int lineno;
+	sensors_config_line line;
 } sensors_bus;
 
 /* Internal data about all features and subfeatures of a chip */
@@ -132,8 +139,17 @@ typedef struct sensors_chip_features {
 	int subfeature_count;
 } sensors_chip_features;
 
+extern char **sensors_config_files;
+extern int sensors_config_files_count;
+extern int sensors_config_files_max;
+
+#define sensors_add_config_files(el) sensors_add_array_el( \
+	(el), &sensors_config_files, &sensors_config_files_count, \
+	&sensors_config_files_max, sizeof(char *))
+
 extern sensors_chip *sensors_config_chips;
 extern int sensors_config_chips_count;
+extern int sensors_config_chips_subst;
 extern int sensors_config_chips_max;
 
 extern sensors_bus *sensors_config_busses;
@@ -156,12 +172,12 @@ extern int sensors_proc_bus_max;
 	(el), &sensors_proc_bus, &sensors_proc_bus_count,\
 	&sensors_proc_bus_max, sizeof(struct sensors_bus))
 
-/* Substitute configuration bus numbers with real-world /proc bus numbers
+/* Substitute configuration bus numbers with real-world bus numbers
    in the chips lists */
 int sensors_substitute_busses(void);
 
 
-/* Parse a bus id into its components. Returns 0 on succes, a value from
+/* Parse a bus id into its components. Returns 0 on success, a value from
    error.h on failure. */
 int sensors_parse_bus_id(const char *name, sensors_bus_id *bus);
 

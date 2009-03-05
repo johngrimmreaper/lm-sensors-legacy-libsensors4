@@ -1,6 +1,6 @@
---- lm-sensors-3-3.0.1.orig/prog/sensord/sense.c
-+++ lm-sensors-3-3.0.1/prog/sensord/sense.c
-@@ -197,9 +197,14 @@
+--- a/prog/sensord/sense.c
++++ b/prog/sensord/sense.c
+@@ -199,9 +199,14 @@
  (void) {
    int ret = 0;
  
@@ -17,4 +17,3 @@
  
    return ret;
  }
-

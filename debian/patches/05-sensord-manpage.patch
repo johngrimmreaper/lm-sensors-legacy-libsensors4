@@ -1,5 +1,5 @@
---- lm-sensors-3-3.0.1.orig/prog/sensord/sensord.8
-+++ lm-sensors-3-3.0.1/prog/sensord/sensord.8
+--- a/prog/sensord/sensord.8
++++ b/prog/sensord/sensord.8
 @@ -330,28 +330,7 @@
  It is expected that all required sensor modules are loaded prior to
  this daemon being started. This can either be achieved with a system

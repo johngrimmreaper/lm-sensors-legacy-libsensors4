@@ -1,5 +1,5 @@
---- lm-sensors-3-3.0.1.orig/etc/sensors-conf-convert.1
-+++ lm-sensors-3-3.0.1/etc/sensors-conf-convert.1
+--- /dev/null
++++ b/etc/sensors-conf-convert.1
 @@ -0,0 +1,53 @@
 +.\" Copyright (C) 2007 Jean Delvare <khali@linux-fr.org>
 +.\" sensors-conf-convert is distributed under the GPL
@@ -12,7 +12,7 @@
 +.\" manual under the conditions for verbatim copying, provided that the
 +.\" entire resulting derived work is distributed under the terms of a
 +.\" permission notice identical to this one
-+.\" 
++.\"
 +.\" Since the Linux kernel and libraries are constantly changing, this
 +.\" manual page may be incorrect or out-of-date.  The author(s) assume no
 +.\" responsibility for errors or omissions, or for damages resulting from
@@ -20,7 +20,7 @@
 +.\" have taken the same level of care in the production of this manual,
 +.\" which is licensed free of charge, as they might when working
 +.\" professionally.
-+.\" 
++.\"
 +.\" Formatted or processed versions of this manual, if unaccompanied by
 +.\" the source, must acknowledge the copyright and authors of this work.
 +.\"
@@ -28,7 +28,7 @@
 +.SH NAME
 +sensors-conf-convert \- convert sensors.conf from lm-sensors 2 format to lm-sensors 3 format
 +.SH SYNOPSIS
-+.B sensors-conf-convert 
++.B sensors-conf-convert
 +.I "< /etc/sensors.conf > /etc/sensors3.conf"
 +.SH DESCRIPTION
 +.B sensors-conf-convert
@@ -54,9 +54,9 @@
 +.SH AUTHOR
 +Jean Delvare.
 +
---- lm-sensors-3-3.0.1.orig/etc/Module.mk
-+++ lm-sensors-3-3.0.1/etc/Module.mk
-@@ -34,11 +34,14 @@
+--- a/etc/Module.mk
++++ b/etc/Module.mk
+@@ -37,11 +37,14 @@
  	fi
  	$(MKDIR) $(DESTDIR)$(BINDIR)
  	$(INSTALL) -m 755 $(ETC_DIR)/sensors-conf-convert $(DESTDIR)$(BINDIR)

@@ -1,262 +1,11 @@
-# Sensors configuration file used by 'libsensors'
-#------------------------------------------------
-#
-##########################################################################
-#                                                                        #
-#    PLEASE READ THIS HELPFUL HINT!!!                                    #
-#                                                                        #
-#       The 'set' lines (generally for min and max values)               #
-#       do not take effect until you run 'sensors -s' as root !!!        #
-#       We suggest you put 'sensors -s' in a /etc/rc.d/... file          #
-#       to be run at boot time after the modules are inserted !!!        #
-#                                                                        #
-##########################################################################
-#
-#
-# OVERVIEW
-# --------
-# This configuration file will be used by all userspace applications
-# linked to libsensors. It is NOT used by the lm_sensors drivers directly.
-#
-# This config file consists of two parts: the heavily commented LM78
-# example, and the real parts. Search for '####' if you want to skip
-# to the real stuff.
-#
-# Hash marks introduce comments, which continue until the end of a line.
-#
-# Identifiers consisting of only digits and letters can be used
-# unquoted; other identifiers must be quoted. Escape characters within
-# quotes operate like those in C.
-#
-#
-# CHIP LINES
-# ----------
-# A 'chip' line specifies what the following 'label', 'compute', 'set' and
-# 'ignore' lines refer to. In this case, until the
-# next 'chip' line, everything refers to all lm78 and lm79
-# chips. Other examples are *-isa-* for everything on the ISA bus, and
-# lm78-i2c-*-4e for all lm78 chips on address 0x4e of any I2C bus.
-#
-# If more chip statements match a specific chip, they are all considered.
-# Later lines overrule earlier lines, so if you set the in0 label for
-# lm78-* to "This", and later on the in0 label for lm78-isa-* to "That",
-# "That" is used for LM78 chips on the ISA bus, and "This" for LM78
-# chips on a non-ISA bus.
-#
-#	chip "lm78-*" "lm79-*"
-#
-#
-# FEATURE NAMES
-# -------------
-# Feature names are used in 'label', 'compute', 'set', and 'ignore' lines.
-# Example feature names are 'in0', 'temp2', 'in3_min', and 'temp3_over'.
-# These features are defined for each chip in lib/chips.c.
-#
-# Undefined features will be silently ignored in 'label' and 'compute' lines.
-# Undefined features in 'set' lines will result in 'Unknown feature name'
-# when running 'sensors -s'.
-#
-# Unfortunately, feature names starting with a number must be in
-# double quotes or you get "parse error, expecting 'NAME'".
-#
-#
-# LABEL LINES
-# -----------
-# A label line describes what a certain feature stands for on your
-# mainboard. Programs can retrieve these names and display them.
-# If no label is specified for a certain feature, the default name
-# (ie. 'fan1' for fan1) is used.
-#
-# These are as advised in the LM78 and LM79 data sheets, and used on most
-# boards we have seen.
-#
-#  	label in0 "VCore 1"
-#  	label in1 "VCore 2"
-#  	label in2 "+3.3V"
-#  	label in3 "+5V"
-#  	label in4 "+12V"
-#  	label in5 "-12V"
-#  	label in6 "-5V"
-#
-#
-# COMPUTE LINES
-# -------------
-# A compute line describes how to scale a certain feature. There are
-# two expressions in it: the first describes how the driver value must
-# be translated to a user value, the second how a user value must be
-# translated to a driver value. '@' is the value to operate on. You may
-# refer to other readable features (like 'cpu0_vid * 1.05').
-#
-# The following operators are valid: + - * / ( ) ^ `
-# ^ is e**x and ` is ln(x)
-#
-# Where it makes sense, compute lines are inherited by subfeatures.
-# For example, the compute line for 'in0' is automatically applied to
-# 'in0_min' and 'in0_max' as well.
-#
-#
-# VOLTAGE COMPUTATION DETAILS
-# ---------------------------
-# Most voltage sensors in sensor chips have a range of 0 to 4.096 Volts.
-# This is generally sufficient for the 3.3 and CPU (2.5V, for example)
-# supply voltages, so the sensor chip reading is the actual voltage.
-#
-# Other supply voltages must be scaled with an external resistor network.
-# The chip driver generally reports the 'raw' value 0 - 4.09 V, and the
-# userspace application must convert this raw value to an actual voltage.
-# The 'compute' lines provide this facility.
-#
-# Unfortunately the resistor values vary among motherboard types.
-# Therefore you may have to adjust the computations in this file
-# to match your motherboard.
-#
-# For positive voltages (in3, in4), two resistors are used, with the following
-# formula (R1,R2: resistor values, Vs: read voltage, Vin: pin voltage)
-#	R1 = R2 * (Vs/Vin - 1)
-# For negative voltages (in5, in6) two resistors are used, with the following
-# formula (Rin,Rf: resistor values, Vs: read voltage, Vin: pin voltage)
-#	Rin = (Vs * Rf) / Vin
-#
-# Note: Some chips use a different formula, see it87 section for example.
-#
-# Here are the official LM78 and LM79 data sheet values.
-# 	      Vs     R1,Rin   R2,Rf    Vin
-# 	in3   +5.0      6.8    10     +2.98
-# 	in4  +12.0     30      10     +3.00
-# 	in5  -12.0    240      60     +3.00
-# 	in6   -5.0    100      60     +3.00
-#
-# These would lead to these declarations:
-# 	compute in3 ((6.8/10)+1)*@ ,  @/((6.8/10)+1)
-# 	compute in4 ((30/10)+1)*@  ,  @/((30/10)+1)
-# 	compute in5 -(240/60)*@    ,  -@/(240/60)
-# 	compute in6 -(100/60)*@    ,  -@/(100/60)
-#
-# On almost any mainboard we have seen, the Winbond compute values lead to
-# much better results, though.
-#
-# 	      Vs     R1,Rin   R2,Rf    Vin
-# 	in4  +12.0     28      10     +3.15
-# 	in5  -12.0    210      60.4   +3.45
-# 	in6   -5.0     90.9    60.4   +3.33
-#
-# These leads to these declarations:
-#  	compute in3 ((6.8/10)+1)*@ ,  @/((6.8/10)+1)
-#  	compute in4 ((28/10)+1)*@  ,  @/((28/10)+1)
-#  	compute in5 -(210/60.4)*@  ,  -@/(210/60.4)
-#  	compute in6 -(90.9/60.4)*@ ,  -@/(90.9/60.4)
-#
-# NOTE: On many motherboards, the -5V and -12V sensors are not connected.
-# Add ignore lines so these readings will not be displayed. For example:
-#	ignore in5
-#	ignore in6
-#
-#
-# TEMPERATURE COMPUTATION EXAMPLES
-# --------------------------------
-# There are two common ways to adjust temperature readings.
-# One is to adjust by a constant. The other is to change the
-# temperature sensor type.
-#
-# Add 5 degrees to temperature sensor 1:
-#	compute temp1 @+5,@-5
-#
-# Sensor type adjustments (certain chips only):
-#	set temp1_type 1    # PII/Celeron Diode
-#	set temp1_type 2    # 3904 transistor
-#	set temp1_type 3    # thermal diode
-#	set temp1_type 4    # thermistor
-#	set temp1_type 5    # AMD AMDSI
-#	set temp1_type 6    # Intel PECI
-#
-# Often, a temperature sensor is disconnected; disable it with an ignore line:
-#	ignore temp3
-#
-#
-# SET LINES
-# ---------
-# Set statements set things like limits. Complete expressions can be
-# used. Not everything can sensibly be set: setting 'in0', for example,
-# is impossible! These settings are put through the compute translations;
-# so if we specify '12.8' for in6, '3.2' will actually be written!
-#
-# Important note: In the 'sensors' program, these only take effect
-# after running 'sensors -s'!!!
-#
-# Here are some examples:
-#
-#	set in0_max cpu0_vid*1.05
-#	set in0_min cpu0_vid*0.95
-#	set temp1_max 40
-#	set temp1_max_hyst 37
-#
-# Think of tempx_max as 'alarm set' and tempx_max_hyst as 'alarm clear'
-# thresholds. In most cases the 'max' value should be higher than
-# the 'max_hyst' value by several degrees.
-#
+# libsensors configuration file
+# -----------------------------
+# NOTE:
 # All the set statements from this file are commented out by default.
 # The reason is that the proper limits are highly system-dependent,
 # and writing improper limits may have all sorts of weird effects,
 # from beeping to CPU throttling to instant reboot. If you want to
-# actually set the limits, remove the comment marks.
-#
-#
-# IGNORE LINES
-# ------------
-# Ignore statements tell certain features are not wanted. As with compute
-# statements, 'ignore in0' would also invalidate 'in0_max' and 'in0_min'.
-# 'ignore' does not disable anything in the actual sensor chip; it
-# simply prevents the user program from accessing that data.
-#
-#	ignore in0
-#
-#
-# STATEMENT ORDER
-# ---------------
-# Statements can go in any order, EXCEPT that some statements depend
-# on others. Dependencies could be either in the library or the driver.
-# A 'compute' statement must go before a 'set' statement
-# for the same feature or else the 'set' won't be computed correctly.
-# This is a library dependency.
-# A 'set fan1_div' statement must go before a 'set fan1_min' statement,
-# because the driver uses the divisor in calculating the minimum.
-#
-#
-# BUS LINES
-# ---------
-# There is one other feature: the 'bus' statement. An example is below.
-#
-#	bus "i2c-0" "SMBus PIIX4 adapter at e800"
-#
-# If we refer from now on to 'i2c-0' in 'chip' lines, this will run-time
-# be matched to this bus. So even if the PIIX4 is called 'i2c-5' at that
-# moment, because five other adapters were detected first, 'i2c-0' in
-# the config file would always only match this physical bus. In the above
-# config file, this feature is not needed; but the next lines would
-# only affect the LM75 chips on the PIIX4 adapter:
-#
-#	chip "lm75-i2c-0-*"
-#
-# You can use "sensors --bus-list" to generate bus lines for your system.
-#
-#
-# BEEPS
-# -----
-# Some chips support alarms with beep warnings. When an alarm is triggered
-# you can be warned by a beeping signal through your computer speaker. It
-# is possible to enable beeps for all alarms on a chip using the following
-# line:
-#
-# 	set beep_enable 1
-#
-# or disable them using:
-#
-# 	set beep_enable 0
-#
-#
-##########################################################################
-#### Here begins the real configuration file
-
+# actually set the limits, remove the comment marks, then run "sensors -s".
 
 chip "lm78-*" "lm79-*" "w83781d-*"
 
@@ -710,23 +459,9 @@ chip "w83792d-*"
 
     label in0 "VCoreA"
     label in1 "VCoreB"
-    label in2 "VIN0"
-    label in3 "VIN1"
-    label in4 "VIN2"
-    label in5 "VIN3"
     label in6 "5VCC"
     label in7 "5VSB"
     label in8 "VBAT"
-    label fan1 "Fan1"
-    label fan2 "Fan2"
-    label fan3 "Fan3"
-    label fan4 "Fan4"
-    label fan5 "Fan5"
-    label fan6 "Fan6"
-    label fan7 "Fan7"
-    label temp1 "Temp1"
-    label temp2 "Temp2"
-    label temp3 "Temp3"
 
 #    set in0_min 1.4
 #    set in0_max 1.6
@@ -1318,7 +1053,6 @@ chip "it87-*" "it8712-*"
 #    set   temp2_max   45
 #    set   temp2_min   15
 #   ignore temp3
-    label temp3       "Temp3"
 #    set   temp3_max   45
 #    set   temp3_min   15
 
@@ -1425,15 +1159,11 @@ chip "fscpos-*"
 
 # Temperature
 
-    label temp1       "Temp1/CPU"
-    label temp2       "Temp2/MB"
-    label temp3       "Temp3/AUX"
+    label temp1       "CPU Temp"
+    label temp2       "M/B Temp"
+    label temp3       "Aux Temp"
 
 # Fans
-
-    label fan1        "Fan1"
-    label fan2        "Fan2"
-    label fan3        "Fan3"
 
 # Voltage
 
@@ -1447,19 +1177,15 @@ chip "fscscy-*"
 
 # Temperature
 
-    label temp1       "Temp1/CPU0"
-    label temp2       "Temp2/CPU1"
-    label temp3       "Temp3/MB"
-    label temp4       "Temp4/AUX"
+    label temp1       "CPU0 Temp"
+    label temp2       "CPU1 Temp"
+    label temp3       "M/B Temp"
+    label temp4       "Aux Temp"
 
 # Fans
 
-    label  fan1       "Fan1/CPU0"
-    label  fan2       "Fan2/CPU0"
-    label  fan3       "Fan3"
-    label  fan4       "Fan4"
-    label  fan5       "Fan5"
-    label  fan6       "Fan6"
+    label  fan1       "CPU Fan"
+    label  fan2       "CPU Fan"
 
 # Voltage
 
@@ -1472,14 +1198,14 @@ chip "fscher-*"
 # Fujitsu-Siemens Hermes chip
 
 # Temperature
-    label temp1       "Temp1/CPU"
-    label temp2       "Temp2/MB"
-    label temp3       "Temp3/AUX"
+    label temp1       "CPU Temp"
+    label temp2       "M/B Temp"
+    label temp3       "Aux Temp"
 
 # Fans
-    label fan1        "Fan1/PS"
-    label fan2        "Fan2/CPU"
-    label fan3        "Fan3/AUX"
+    label fan1        "PSU Fan"
+    label fan2        "CPU Fan"
+    label fan3        "Aux Fan"
 
 # Voltage
     label in0         "+12V"
@@ -1570,8 +1296,6 @@ chip "lm90-*" "adm1032-*" "lm86-*" "max6657-*" "adt7461-*" "max6680-*"
 
    label temp1 "M/B Temp"
    label temp2 "CPU Temp"
-   label temp1_crit "M/B Crit"
-   label temp2_crit "CPU Crit"
 
 # change high and low limits to fit your needs
 #   set temp1_min 10
@@ -1592,19 +1316,18 @@ chip "lm90-*" "adm1032-*" "lm86-*" "max6657-*" "adt7461-*" "max6680-*"
 # never exceed this value
 #   set temp1_crit_hyst 70
 
-chip "lm99-*"
+chip "lm89-*" "lm99-*"
 
    label temp1 "G/C Temp"
    label temp2 "GPU Temp"
-   label temp1_crit "G/C Crit"
-   label temp2_crit "GPU Crit"
 
-# note #1: only the LM99 needs this; for a LM89, comment the compute line
-# out
+# note #1: the LM99 needs the compute statement below if you're running
+# a kernel <= 2.6.27; since kernel 2.6.28 the offset is handled in the
+# lm90 driver directly instead
 # note #2: there is no way for us to differentiate between a LM89 and a
-# LM99; you have to know what you have; LM99 are frequently found on
-# graphics cards, most notably nVidia ones
-   compute temp2 @+16, @-16
+# LM99; you have to know what you have; the driver will assume a LM99,
+# use the force_lm86 module parameter if you have a LM89
+#   compute temp2 @+16, @-16
 
 # change high and low limits to fit your needs
 #   set temp1_min  10
@@ -1630,7 +1353,6 @@ chip "lm63-*"
 
    label temp1       "M/B Temp"
    label temp2       "CPU Temp"
-   label temp2_crit  "CPU Crit"
    label fan1        "CPU Fan"
 
 # Change limits to fit your needs. Note that temp2_crit is read-only.
@@ -1946,10 +1668,10 @@ chip "asb100-*"
 # Sample configuration for the Intel S845WD1-E
 # courtesy of Marcus Schopen
 #
-chip "lm85c-*" "adm1027-*" "adt7463-*" "lm85-*" "lm85b-*"
+chip "lm85-*" "lm85b-*" "lm85c-*" "adm1027-*" "adt7463-*" "adt7468-*" "emc6d100-*" "emc6d102-*"
 
 # Voltage inputs
-# Depending on the hardware setup, the ADT7463 may not have in4.
+# Depending on the hardware setup, the ADT7463 and ADT7468 may not have in4.
    label in0   "V1.5"      # AGP on Intel S845WD1-E
    label in1   "VCore"
    label in2   "V3.3"
@@ -1962,10 +1684,7 @@ chip "lm85c-*" "adm1027-*" "adt7463-*" "lm85-*" "lm85b-*"
    label temp3  "Remote Temp"
 
 # Fan inputs
-   label fan1   "CPU_Fan"
-#   label fan2   "Fan2"
-#   label fan3   "Fan3"
-#   label fan4   "Fan4"
+   label fan1   "CPU Fan"
 
 # Voltage scaling is done on-chip.  No 'compute' directive
 # should be necessary.  If in0 has external scaling set
@@ -2005,7 +1724,7 @@ chip "lm85c-*" "adm1027-*" "adt7463-*" "lm85-*" "lm85b-*"
 #   set temp3_min 10
 #   set temp3_max 35
 
-chip "pc87366-*"
+chip "pc87365-*" "pc87366-*"
 
 # Voltage inputs
 
@@ -2032,11 +1751,8 @@ chip "pc87366-*"
 # Temperature inputs
 
    label temp1       "CPU0 Temp"
-   label temp1_crit  "CPU0 Crit"
    label temp2       "CPU1 Temp"
-   label temp2_crit  "CPU1 Crit"
    label temp3       "S-IO Temp"
-   label temp3_crit  "S-IO Crit"
 
 #   set temp1_min    0
 #   set temp1_max   70
@@ -2096,8 +1812,6 @@ chip "adm1030-*"
 
    label temp1 "SYS Temp"
    label temp2 "CPU Temp"
-   label temp1_crit "SYS Crit"
-   label temp2_crit "CPU Crit"
 
 #   set temp1_max  60
 #   set temp2_max  70
@@ -2114,9 +1828,6 @@ chip "adm1031-*"
    label temp1 "SYS Temp"
    label temp2 "CPU Temp"
    label temp3 "AUX Temp"
-   label temp1_crit "SYS Crit"
-   label temp2_crit "CPU Crit"
-   label temp3_crit "AUX Crit"
 
 #   set temp1_max  60
 #   set temp2_max  70
@@ -2155,8 +1866,10 @@ chip "lm92-*"
 chip "w83627ehf-*" "w83627dhg-*"
 
     label in0 "VCore"
+    label in1 "+12V"
     label in2 "AVCC"
     label in3 "3VCC"
+    label in6 "+5V"
     label in7 "VSB"
     label in8 "VBAT"
 
@@ -2203,7 +1916,7 @@ chip "w83627ehf-*" "w83627dhg-*"
 # This is the recommended wiring and resistor values from the F71805F/FG
 # datasheet. Your motherboard manufacturer may or may not have followed
 # these.
-chip "f71805f-*"
+chip "f71805f-*" "f71872f-*"
 # Voltages
    label in0 "+3.3V"
    label in1 "Vtt1.2V"
@@ -2352,12 +2065,7 @@ chip "dme1737-*"
    label temp3   "CPU Temp"
 
 # Fan inputs
-   label fan1   "CPU_Fan"
-   label fan2   "Fan2"
-   label fan3   "Fan3"
-   label fan4   "Fan4"
-   label fan5   "Fan5"
-   label fan6   "Fan6"
+   label fan1   "CPU Fan"
 
 # Set voltage limits
 #   set in0_min   5.0 * 0.95
@@ -2448,3 +2156,16 @@ chip "adm1022-*" "thmc50-*"
    # Dual CPU setup (ADM1022 only)
    #label temp2 "CPU0 Temp"
    #label temp3 "CPU1 Temp"
+
+# Asus/Fintek F8000
+chip "f8000-*"
+
+   # All 3 voltages are internal, but scaling is not done by the driver
+   # so we do it here
+   compute in0  @*2, @/2
+   compute in1  @*2, @/2
+   compute in2  @*2, @/2
+
+   label  in0  "+3.3V"
+   label  in1  "3VSB"
+   label  in2  "Vbat"

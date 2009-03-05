@@ -1,3 +1,21 @@
+lm-sensors-3 (1:3.1.0-1) unstable; urgency=low
+
+  * New upstream version.
+  * lm-sensors.fancontrol.init: remove pidfile on stop action (closes:
+    bug#504304).
+  * lm-sensors.fancontrol.init: decrease the stop/start time to 3
+    seconds (closes: bug#504379).
+  * libsensors4.README.Debian: update.
+  * libsensors4.symbols: new file. 
+  * lm-sensors.preinst: remove /etc/modprobe.d/i2c on install/upgrade
+    (closes: bug#518111).
+  * patches/06-sensors-detect-debian.patch: update.
+  * patches/07-sensors-detect-fixes.patch: remove (merged upstream).
+  * patches/07-sensors-detect-modprobe.conf.patch: new patch to create
+    files with .conf extension in /etc/modprobe.d/.
+
+ -- Aurelien Jarno <aurel32@debian.org>  Thu, 05 Mar 2009 01:30:18 +0100
+
 lm-sensors-3 (1:3.0.2-2) unstable; urgency=low
 
   * Remove stop links from rc0 and rc6 (closes: bug#495547).
