@@ -138,7 +138,7 @@ char sensors_sysfs_mount[NAME_MAX];
 
 #define MAX_SENSORS_PER_TYPE	20
 #define MAX_SUBFEATURES		8
-#define MAX_SENSOR_TYPES	5
+#define MAX_SENSOR_TYPES	6
 /* Room for all 5 types (in, fan, temp, power, energy) with all their
    subfeatures + VID + misc features */
 #define ALL_POSSIBLE_SUBFEATURES \
@@ -153,6 +153,7 @@ int get_type_scaling(sensors_subfeature_type type)
 	switch (type & 0xFF80) {
 	case SENSORS_SUBFEATURE_IN_INPUT:
 	case SENSORS_SUBFEATURE_TEMP_INPUT:
+	case SENSORS_SUBFEATURE_CURR_INPUT:
 		return 1000;
 	case SENSORS_SUBFEATURE_FAN_INPUT:
 		return 1;
@@ -184,11 +185,17 @@ char *get_feature_name(sensors_feature_type ftype, char *sfname)
 	case SENSORS_FEATURE_TEMP:
 	case SENSORS_FEATURE_POWER:
 	case SENSORS_FEATURE_ENERGY:
+	case SENSORS_FEATURE_CURR:
 		underscore = strchr(sfname, '_');
 		name = strndup(sfname, underscore - sfname);
+		if (!name)
+			sensors_fatal_error(__func__, "Out of memory");
+
 		break;
 	default:
 		name = strdup(sfname);
+		if (!name)
+			sensors_fatal_error(__func__, "Out of memory");
 	}
 
 	return name;
@@ -247,12 +254,25 @@ static const struct subfeature_type_match power_matches[] = {
 	{ "average", SENSORS_SUBFEATURE_POWER_AVERAGE },
 	{ "average_highest", SENSORS_SUBFEATURE_POWER_AVERAGE_HIGHEST },
 	{ "average_lowest", SENSORS_SUBFEATURE_POWER_AVERAGE_LOWEST },
+	{ "input", SENSORS_SUBFEATURE_POWER_INPUT },
+	{ "input_highest", SENSORS_SUBFEATURE_POWER_INPUT_HIGHEST },
+	{ "input_lowest", SENSORS_SUBFEATURE_POWER_INPUT_LOWEST },
 	{ "average_interval", SENSORS_SUBFEATURE_POWER_AVERAGE_INTERVAL },
 	{ NULL, 0 }
 };
 
 static const struct subfeature_type_match energy_matches[] = {
 	{ "input", SENSORS_SUBFEATURE_ENERGY_INPUT },
+	{ NULL, 0 }
+};
+
+static const struct subfeature_type_match curr_matches[] = {
+	{ "input", SENSORS_SUBFEATURE_CURR_INPUT },
+	{ "min", SENSORS_SUBFEATURE_CURR_MIN },
+	{ "max", SENSORS_SUBFEATURE_CURR_MAX },
+	{ "alarm", SENSORS_SUBFEATURE_CURR_ALARM },
+	{ "min_alarm", SENSORS_SUBFEATURE_CURR_MIN_ALARM },
+	{ "max_alarm", SENSORS_SUBFEATURE_CURR_MAX_ALARM },
 	{ NULL, 0 }
 };
 
@@ -267,6 +287,7 @@ static struct feature_type_match matches[] = {
 	{ "fan%d%c", fan_matches },
 	{ "cpu%d%c", cpu_matches },
 	{ "power%d%c", power_matches },
+	{ "curr%d%c", curr_matches },
 	{ "energy%d%c", energy_matches },
 };
 
@@ -341,11 +362,14 @@ static int sensors_read_dynamic_chip(sensors_chip_features *chip,
 		sensors_fatal_error(__func__, "Out of memory");
 
 	while ((ent = readdir(dir))) {
-		char *name = ent->d_name;
+		char *name;
 		int nr;
 
-		if (ent->d_name[0] == '.')
+		/* Skip directories and symlinks */
+		if (ent->d_type != DT_REG)
 			continue;
+
+		name = ent->d_name;
 
 		sftype = sensors_subfeature_get_type(name, &nr);
 		if (sftype == SENSORS_SUBFEATURE_UNKNOWN)
@@ -357,6 +381,7 @@ static int sensors_read_dynamic_chip(sensors_chip_features *chip,
 		case SENSORS_SUBFEATURE_TEMP_INPUT:
 		case SENSORS_SUBFEATURE_POWER_AVERAGE:
 		case SENSORS_SUBFEATURE_ENERGY_INPUT:
+		case SENSORS_SUBFEATURE_CURR_INPUT:
 			nr--;
 			break;
 		}
@@ -399,6 +424,9 @@ static int sensors_read_dynamic_chip(sensors_chip_features *chip,
 		/* fill in the subfeature members */
 		all_subfeatures[i].type = sftype;
 		all_subfeatures[i].name = strdup(name);
+		if (!all_subfeatures[i].name)
+			sensors_fatal_error(__func__, "Out of memory");
+
 		if (!(sftype & 0x80))
 			all_subfeatures[i].flags |= SENSORS_COMPUTE_MAPPING;
 		all_subfeatures[i].flags |= sensors_get_attr_mode(dev_path, name);
@@ -579,6 +607,11 @@ static int sensors_read_one_sysfs_chip(const char *dev_path,
 			entry.chip.addr = 0;
 		entry.chip.bus.type = SENSORS_BUS_TYPE_ISA;
 		entry.chip.bus.nr = 0;
+	} else if (subsys && !strcmp(subsys, "acpi")) {
+		entry.chip.bus.type = SENSORS_BUS_TYPE_ACPI;
+		/* For now we assume that acpi devices are unique */
+		entry.chip.bus.nr = 0;
+		entry.chip.addr = 0;
 	} else {
 		/* Ignore unknown device */
 		err = 0;

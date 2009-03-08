@@ -22,14 +22,16 @@
 MODULE_DIR := etc
 ETC_DIR := $(MODULE_DIR)
 
-ETCTARGET := $(MODULE_DIR)/sensors.conf.eg
+ETCTARGET := $(MODULE_DIR)/sensors.conf.default
 ETCINSTALL := $(ETCDIR)/sensors3.conf
+ETCINSTALL_DIR_D := $(ETCDIR)/sensors.d
 
 
 # No all rule
 
 install-etc:
 	$(MKDIR) $(DESTDIR)$(ETCDIR)
+	$(MKDIR) $(DESTDIR)$(ETCINSTALL_DIR_D)
 	if [ ! -e $(DESTDIR)$(ETCINSTALL) ] ; then \
 	  $(INSTALL) -m 644 $(ETCTARGET) $(DESTDIR)$(ETCINSTALL); \
 	fi
