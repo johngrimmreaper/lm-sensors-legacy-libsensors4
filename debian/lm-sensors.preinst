@@ -30,12 +30,16 @@ case "$1" in
         # by old versions.
         if dpkg --compare-versions "$2" lt "1:2.9.0-14"; then
             rm_conffile lm-sensors /etc/blacklist.d/lm-sensors
-            rmdir --ignore-fail-on-non-empty /etc/blacklist.d/
+	    if [ -f /etc/blacklist.d/ ] ; then
+                rmdir --ignore-fail-on-non-empty /etc/blacklist.d/
+            fi            
         fi
         # Remove a config file that is not needed any more
         if dpkg --compare-versions "$2" lt "1:3.0.1-4"; then
             rm_conffile lm-sensors /etc/modutils/i2c
-            rmdir --ignore-fail-on-non-empty /etc/modutils/
+	    if [ -f /etc/modutils/ ] ; then
+                rmdir --ignore-fail-on-non-empty /etc/modutils/
+            fi
         fi
         # Remove an old init script
         if [ -h "/etc/rcS.d/S36lm-sensors" ] ; then
