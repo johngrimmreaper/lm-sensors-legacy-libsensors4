@@ -5,7 +5,7 @@
 # Syslog facility to use
 SYSLOG_FACILITY=daemon
 # Libsensors config file to use
-# CONFIG_FILE=/etc/sensors.conf
+# CONFIG_FILE=/etc/sensors3.conf
 # Chips to scan
 # SCAN_CHIPS=...
 

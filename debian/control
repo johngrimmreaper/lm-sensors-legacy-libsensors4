@@ -1,15 +1,15 @@
 Source: lm-sensors-3
 Section: utils
 Priority: extra
-Build-Depends: debhelper (>= 4.1.16), quilt, bison, flex, librrd2-dev
+Build-Depends: debhelper (>= 5), quilt, bison, flex, librrd2-dev
 Maintainer: Aurelien Jarno <aurel32@debian.org>
-Standards-Version: 3.8.0
+Standards-Version: 3.8.2
 Homepage: http://www.lm-sensors.org
 
 Package: lm-sensors
 Architecture: any
 Section: utils
-Depends: sed (>= 4.0.5-1), ${misc:Depends}, ${shlibs:Depends}, ${perl:Depends}
+Depends: sed (>= 4.0.5-1), lsb-base (>= 3.2-13), ${misc:Depends}, ${shlibs:Depends}, ${perl:Depends}
 Suggests: sensord, read-edid, i2c-tools
 Description: utilities to read temperature/voltage/fan sensors
  Lm-sensors is a hardware health monitoring package for Linux. It allows you
@@ -48,7 +48,7 @@ Description: lm-sensors development kit
 Package: sensord
 Architecture: any
 Section: utils
-Depends: lm-sensors, ${shlibs:Depends}, ${misc:Depends}
+Depends: lm-sensors, lsb-base (>= 3.2-13), ${shlibs:Depends}, ${misc:Depends}
 Description: hardware sensor information logging daemon
  Lm-sensors is a hardware health monitoring package for Linux. It allows you
  to access information from temperature, voltage, and fan speed sensors. It

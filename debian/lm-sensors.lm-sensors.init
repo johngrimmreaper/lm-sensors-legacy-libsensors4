@@ -35,8 +35,11 @@ case "$1" in
   force-reload|restart)
 	$0 start
 	;;
+  status)
+	exit 0
+	;;
   *)
-	log_success_msg "Usage: /etc/init.d/sensors {start|stop|restart|force-reload}"
+	log_success_msg "Usage: /etc/init.d/sensors {start|stop|restart|force-reload|status}"
 	exit 1
 esac
 

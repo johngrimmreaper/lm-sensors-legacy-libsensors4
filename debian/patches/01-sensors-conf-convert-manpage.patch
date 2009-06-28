@@ -1,5 +1,7 @@
---- /dev/null
-+++ b/etc/sensors-conf-convert.1
+Index: lm_sensors-3.1.1/etc/sensors-conf-convert.1
+===================================================================
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ lm_sensors-3.1.1/etc/sensors-conf-convert.1	2009-06-28 22:11:24.000000000 +0200
 @@ -0,0 +1,53 @@
 +.\" Copyright (C) 2007 Jean Delvare <khali@linux-fr.org>
 +.\" sensors-conf-convert is distributed under the GPL
@@ -54,9 +56,11 @@
 +.SH AUTHOR
 +Jean Delvare.
 +
---- a/etc/Module.mk
-+++ b/etc/Module.mk
-@@ -37,11 +37,14 @@
+Index: lm_sensors-3.1.1/etc/Module.mk
+===================================================================
+--- lm_sensors-3.1.1.orig/etc/Module.mk	2009-06-28 22:10:13.000000000 +0200
++++ lm_sensors-3.1.1/etc/Module.mk	2009-06-28 22:11:24.000000000 +0200
+@@ -28,10 +28,13 @@
  	fi
  	$(MKDIR) $(DESTDIR)$(BINDIR)
  	$(INSTALL) -m 755 $(ETC_DIR)/sensors-conf-convert $(DESTDIR)$(BINDIR)
@@ -70,4 +74,3 @@
 +	$(RM) $(DESTDIR)$(MANDIR)/man1/sensors-conf-convert.1
  
  user_uninstall :: uninstall-etc
- 

@@ -41,7 +41,7 @@ use constant NO_CACHE => 1;
 use vars qw(@pci_adapters @chip_ids @ipmi_ifs @non_hwmon_chip_ids
 	    $i2c_addresses_to_scan $revision @i2c_byte_cache);
 
-$revision = '$Revision: 5666 $ ($Date: 2009-02-26 17:15:04 +0100 (jeu. 26 févr. 2009) $)';
+$revision = '$Revision: 5729 $ ($Date: 2009-06-02 15:51:29 +0200 (mar. 02 juin 2009) $)';
 $revision =~ s/\$\w+: (.*?) \$/$1/g;
 $revision =~ s/ \([^()]*\)//;
 
@@ -336,6 +336,11 @@ $revision =~ s/ \([^()]*\)//;
 		vendid	=> 0x10de,
 		devid	=> 0x07d8,
 		procid	=> "nVidia Corporation nForce SMBus (MCP73)",
+		driver	=> "i2c-nforce2",
+	}, {
+		vendid	=> 0x10de,
+		devid	=> 0x0752,
+		procid	=> "nVidia Corporation nForce SMBus (MCP78S)",
 		driver	=> "i2c-nforce2",
 	}, {
 		vendid	=> 0x10de,
@@ -643,6 +648,11 @@ use vars qw(@i2c_adapter_names);
 		i2c_addrs => [0x2c..0x2f],
 		i2c_detect => sub { w83793_detect(@_); },
 	}, {
+		name => "Nuvoton W83795G/ADG",
+		driver => "w83795",
+		i2c_addrs => [0x2c..0x2f],
+		i2c_detect => sub { w83795_detect(@_); },
+	}, {
 		name => "Winbond W83627HF",
 		driver => "use-isa-instead",
 		i2c_addrs => [0x28..0x2f],
@@ -901,7 +911,12 @@ use vars qw(@i2c_adapter_names);
 		name => "National Semiconductor LM95231",
 		driver => "to-be-written",
 		i2c_addrs => [0x2b, 0x19, 0x2a],
-		i2c_detect => sub { lm95231_detect(@_); },
+		i2c_detect => sub { lm95231_detect(@_, 0); },
+	}, {
+		name => "National Semiconductor LM95241",
+		driver => "lm95241",
+		i2c_addrs => [0x2b, 0x19, 0x2a],
+		i2c_detect => sub { lm95231_detect(@_, 1); },
 	}, {
 		name => "National Semiconductor LM63",
 		driver => "lm63",
@@ -1158,6 +1173,9 @@ use vars qw(@i2c_adapter_names);
 #  devid: The device ID we have to match (base device)
 #  devid_mask (optional): Bitmask to apply before checking the device ID
 #  logdev: The logical device containing the sensors
+#  check (optional): A function to refine the detection. Will be passed
+#      the index and data ports as parameters. Must return 1 for a matching
+#      device, 0 otherwise.
 #  features (optional): Features supported by this device, amongst:
 #      * FEAT_IN
 #      * FEAT_FAN
@@ -1172,11 +1190,25 @@ use constant FEAT_SMBUS	=> (1 << 7);
 
 @superio_ids_natsemi = (
 	{
-		name => "Nat. Semi. PC8374L Super IO Sensors",
+		name => "Nat. Semi. PC8374L Super IO Sensors",	# Also Nuvoton WPCD374L
 		driver => "to-be-written",
 		devid => 0xf1,
+		check => sub {
+			outb($_[0], 0x27);
+			# Guess work; seen so far: 0x11
+			return (inb($_[1]) < 0x80);
+		},
 		logdev => 0x08,
 		features => FEAT_IN | FEAT_FAN | FEAT_TEMP,
+	}, {
+		name => "Nuvoton WPCD377I Super IO",	# Also WPCD376I
+		driver => "not-a-sensor",
+		devid => 0xf1,
+		check => sub {
+			outb($_[0], 0x27);
+			# Guess work; seen so far: 0x91 (twice)
+			return (inb($_[1]) >= 0x80);
+		},
 	}, {
 		name => "Nat. Semi. PC87351 Super IO Fan Sensors",
 		driver => "to-be-written",
@@ -1586,6 +1618,20 @@ use constant FEAT_SMBUS	=> (1 << 7);
 		logdev => 0x0b,
 		features => FEAT_IN | FEAT_FAN | FEAT_TEMP,
 	}, {
+		name => "Winbond W83627DHG-P Super IO Sensors",
+		driver => "w83627ehf",
+		devid => 0xB070,
+		devid_mask => 0xFFF0,
+		logdev => 0x0b,
+		features => FEAT_IN | FEAT_FAN | FEAT_TEMP,
+	}, {
+		name => "Winbond W83627UHG Super IO Sensors",
+		driver => "to-be-written",
+		devid => 0xA230,
+		devid_mask => 0xFFF0,
+		logdev => 0x0b,
+		features => FEAT_IN | FEAT_FAN | FEAT_TEMP,
+	}, {
 		name => "Winbond W83667HG Super IO Sensors",
 		driver => "w83627ehf",
 		devid => 0xA510,
@@ -1604,7 +1650,7 @@ use constant FEAT_SMBUS	=> (1 << 7);
 		features => FEAT_IN | FEAT_FAN | FEAT_TEMP,
 	}, {
 		name => "Fintek F71862FG Super IO Sensors",
-		driver => "to-be-written",
+		driver => "f71882fg",
 		devid => 0x0601,
 		logdev => 0x04,
 		features => FEAT_IN | FEAT_FAN | FEAT_TEMP,
@@ -1616,7 +1662,7 @@ use constant FEAT_SMBUS	=> (1 << 7);
 		features => FEAT_IN | FEAT_FAN | FEAT_TEMP,
 	}, {
 		name => "Fintek F71858DG Super IO Sensors",
-		driver => "to-be-written",
+		driver => "f71882fg",
 		devid => 0x0507,
 		logdev => 0x02,
 		features => FEAT_IN | FEAT_FAN | FEAT_TEMP,
@@ -1625,6 +1671,12 @@ use constant FEAT_SMBUS	=> (1 << 7);
 		driver => "f71882fg",
 		devid => 0x0541,
 		logdev => 0x04,
+		features => FEAT_IN | FEAT_FAN | FEAT_TEMP,
+	}, {
+		name => "Fintek F71889FG Super IO Sensors",
+		driver => "to-be-written",
+		devid => 0x0723,
+		logdev => 0x04, # Verify once we have a datasheet
 		features => FEAT_IN | FEAT_FAN | FEAT_TEMP,
 	}, {
 		name => "Fintek F81216D Super IO",
@@ -2228,7 +2280,33 @@ sub unload_modules
 # DMI DATA #
 ############
 
-use vars qw(%dmi);
+use vars qw(%dmi $dmidecode_ok);
+
+# Returns: 1 if dmidecode is recent enough, 0 if not
+# Cache the result in case it is needed again later.
+sub check_dmidecode_version
+{
+	return $dmidecode_ok if defined $dmidecode_ok;
+
+	my $version;
+	if (open(local *DMIDECODE, "dmidecode --version 2>/dev/null |")) {
+		$version = <DMIDECODE>;
+		close(DMIDECODE);
+		chomp $version if defined $version;
+	}
+
+	if (!defined $version
+	 || !($version =~ m/^(\d+).(\d+)$/)
+	 || !(($1 == 2 && $2 >= 7) || $1 > 2)) {
+		print "# DMI data unavailable, please consider installing dmidecode 2.7\n".
+		      "# or later for better results.\n";
+		$dmidecode_ok = 0;
+	} else {
+		$dmidecode_ok = 1;
+	}
+
+	return $dmidecode_ok;
+}
 
 sub initialize_dmi_data
 {
@@ -2257,20 +2335,7 @@ sub initialize_dmi_data
 		}
 	} else {
 		# Else fallback on calling dmidecode
-		my $version;
-		if (open(local *DMIDECODE, "dmidecode --version 2>/dev/null |")) {
-			$version = <DMIDECODE>;
-			close(DMIDECODE);
-			chomp $version if defined $version;
-		}
-
-		if (!defined $version
-		 || !($version =~ m/^(\d+).(\d+)$/)
-		 || !(($1 == 2 && $2 >= 7) || $1 > 2)) {
-			print "# DMI data unavailable, please consider installing dmidecode 2.7\n".
-			      "# or later for better results.\n";
-			return;
-		}
+		return unless check_dmidecode_version();
 
 		foreach my $k (keys %items) {
 			next unless open(local *DMIDECODE,
@@ -3115,7 +3180,7 @@ sub scan_isa_bus
 	foreach $chip (@{$chip_list_ref}) {
 		next if not exists $chip->{isa_addrs} or not exists $chip->{isa_detect};
 		foreach $addr (@{$chip->{isa_addrs}}) {
-			printf("\%-60s", sprintf("Probing for `\%s'\ at 0x\%x... ",
+			printf("\%-60s", sprintf("Probing for `\%s' at 0x\%x... ",
 						 $chip->{name}, $addr));
 			$conf = &{$chip->{isa_detect}} ($addr);
 			print("No\n"), next if not defined $conf;
@@ -3200,6 +3265,10 @@ sub probe_superio
 	my ($addrreg, $datareg, $chip) = @_;
 	my ($val, $addr);
 
+	if (exists $chip->{check}) {
+		return 0 unless $chip->{check}($addrreg, $datareg);
+	}
+
 	printf "\%-60s", "Found `$chip->{name}'";
 
 	# Does it have hardware monitoring capabilities?
@@ -3220,23 +3289,28 @@ sub probe_superio
 	outb($addrreg, $superio{logdevreg});
 	outb($datareg, $chip->{logdev});
 
-	# Check the activation register
-	outb($addrreg, $superio{actreg});
-	$val = inb($datareg);
-	if (!($val & $superio{actmask})) {
-		print "\n    (but not activated)\n";
-		return 0;
-	}
-
-	# Get the IO base register
+	# Get the IO base address
 	outb($addrreg, $superio{basereg});
 	$addr = inb($datareg);
 	outb($addrreg, $superio{basereg} + 1);
 	$addr = ($addr << 8) | inb($datareg);
+
+	# Check the activation register and base address
+	outb($addrreg, $superio{actreg});
+	$val = inb($datareg);
+	if (!($val & $superio{actmask})) {
+		if ($addr) {
+			printf "\n    (address 0x\%x, but not activated)\n", $addr;
+		} else {
+			print "\n    (but not activated)\n";
+		}
+		return 0;
+	}
 	if ($addr == 0) {
 		print "\n    (but no address specified)\n";
 		return 0;
 	}
+
 	print "Success!\n";
 	printf "    (address 0x\%x, driver `%s')\n", $addr, $chip->{driver};
 	my $new_hash = {
@@ -3858,20 +3932,28 @@ sub max6657_detect
 	return 5;
 }
 
+# Chip to detect: 0 = LM95231, 1 = LM95241
 # Registers used:
-#   0x03: Configuration
+#   0x02: Status (3 unused bits)
+#   0x03: Configuration (3 unused bits)
+#   0x06: Remote diode filter control (6 unused bits)
+#   0x30: Remote diode model type select (6 unused bits)
 #   0xfe: Manufacturer ID
 #   0xff: Revision ID
 sub lm95231_detect
 {
-	my ($file, $addr) = @_;
+	my ($file, $addr, $chip) = @_;
 	my $mid = i2c_smbus_read_byte_data($file, 0xfe);
 	my $cid = i2c_smbus_read_byte_data($file, 0xff);
-	my $conf = i2c_smbus_read_byte_data($file, 0x03);
 
-	return if ($conf & 0x89) != 0;
-	return if $mid != 0x01;		# National Semiconductor
-	return if $cid != 0xa1;		# LM95231
+	return if $mid != 0x01;				# National Semiconductor
+	return if $chip == 0 && $cid != 0xa1;		# LM95231
+	return if $chip == 1 && $cid != 0xa4;		# LM95231
+
+	return if i2c_smbus_read_byte_data($file, 0x02) & 0x70;
+	return if i2c_smbus_read_byte_data($file, 0x03) & 0x89;
+	return if i2c_smbus_read_byte_data($file, 0x06) & 0xfa;
+	return if i2c_smbus_read_byte_data($file, 0x30) & 0xfa;
 
 	return 6;
 }
@@ -4312,6 +4394,33 @@ sub w83793_detect
 	push @res, ($reg & 0x07) + 0x48 unless $reg & 0x08;
 	push @res, (($reg & 0x70) >> 4) + 0x48 unless $reg & 0x80;
 	return @res;
+}
+
+# Registers used:
+#   0xfc: Full I2C Address
+#   0x00: Vendor ID byte selection, and bank selection(Bank 0, 1, 2)
+#   0xfd: Vendor ID(Bank 0, 1, 2)
+#   0xfe: Device ID(Bank 0, 1, 2)
+sub w83795_detect
+{
+	my ($bank, $reg);
+	my ($file, $addr) = @_;
+
+	$bank = i2c_smbus_read_byte_data($file, 0x00);
+	$reg = i2c_smbus_read_byte_data($file, 0xfd);
+
+	return unless (($bank & 0x80) == 0x00 and $reg == 0xa3) or
+		      (($bank & 0x80) == 0x80 and $reg == 0x5c);
+
+	$reg = i2c_smbus_read_byte_data($file, 0xfe);
+	return if $reg != 0x79;
+
+	# If bank 0 is selected, we can do more checks
+	return 6 unless ($bank & 0x07) == 0;
+	$reg = i2c_smbus_read_byte_data($file, 0xfc) & 0x7f;
+	return unless ($reg == $addr);
+
+	return 8;
 }
 
 # Registers used:
@@ -4972,6 +5081,61 @@ sub w83781d_isa_detect
 	return 8;
 }
 
+########
+# IPMI #
+########
+
+# Returns: number of IPMI interfaces found
+sub ipmi_from_smbios
+{
+	my ($version, $if, @ipmi_if);
+
+	return 0 unless check_dmidecode_version();
+
+	# Parse the output of dmidecode into an array of IPMI interfaces.
+	# Each entry is a hash with the following keys: type and addr.
+	$if = -1;
+	open(local *DMIDECODE, "dmidecode -t 38 2>/dev/null |") or return 0;
+	while (<DMIDECODE>) {
+		if (m/^IPMI Device Information/) {
+			$if++;
+			next;
+		}
+		next unless $if >= 0;
+
+		if (m/^\tInterface Type: (.*)$/) {
+			$ipmi_if[$if]->{type} = "IPMI BMC $1";
+			$ipmi_if[$if]->{type} =~ s/ \(.*//;
+			next;
+		}
+		if (m/^\tBase Address: (0x[0-9A-Fa-f]+) \(I\/O\)$/) {
+			$ipmi_if[$if]->{addr} = oct($1);
+			next;
+		}
+	}
+	close(DMIDECODE);
+
+	foreach $if (@ipmi_if) {
+		if (exists $if->{addr}) {
+			printf("\%-60s", sprintf("Found `\%s' at 0x\%x... ",
+						 $if->{type}, $if->{addr}));
+		} else {
+			printf("\%-60s", sprintf("Found `\%s'... ",
+						 $if->{type}));
+		}
+		print "Success!\n".
+		      "    (confidence 8, driver `ipmisensors')\n";
+		my $new_hash = {
+			conf => 8,
+			isa_addr => $if->{addr} || 0,
+			chipname => $if->{type},
+		};
+		add_isa_to_chips_detected("ipmisensors", $new_hash);
+	}
+
+	return scalar @ipmi_if;
+}
+
 # We simply look for a register at standard locations.
 # For KCS, use the STATUS register. For SMIC, use the FLAGS register.
 # Incidentally they live at the same offset.
@@ -5430,13 +5594,16 @@ sub main
 		unless (is_laptop()) {
 			print "Some systems (mainly servers) implement IPMI, a set of common interfaces\n".
 			      "through which system health data may be retrieved, amongst other things.\n".
-			      "We have to read from arbitrary I/O ports to probe for such interfaces.\n".
-			      "This is normally safe. Do you want to scan for IPMI interfaces?\n".
-			      "(YES/no): ";
+			      "We first try to get the information from SMBIOS. If we don't find it\n".
+			      "there, we have to read from arbitrary I/O ports to probe for such\n".
+			      "interfaces. This is normally safe. Do you want to scan for IPMI\n".
+			      "interfaces? (YES/no): ";
 			unless (<STDIN> =~ /^\s*n/i) {
-				initialize_ioports();
-				scan_isa_bus(\@ipmi_ifs);
-				close_ioports();
+				if (!ipmi_from_smbios()) {
+					initialize_ioports();
+					scan_isa_bus(\@ipmi_ifs);
+					close_ioports();
+				}
 			}
 			print "\n";
 		}

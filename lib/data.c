@@ -54,6 +54,11 @@ sensors_bus *sensors_proc_bus = NULL;
 int sensors_proc_bus_count = 0;
 int sensors_proc_bus_max = 0;
 
+void sensors_free_chip_name(sensors_chip_name *chip)
+{
+	free(chip->prefix);
+}
+
 /*
    Parse a chip name to the internal representation. These are valid names:
 
@@ -88,7 +93,7 @@ int sensors_parse_chip_name(const char *name, sensors_chip_name *res)
 			return -SENSORS_ERR_CHIP_NAME;
 		res->prefix = strndup(name, dash - name);
 		if (!res->prefix)
-			sensors_fatal_error("sensors_parse_chip_name",
+			sensors_fatal_error(__func__,
 					    "Allocating name prefix");
 		name = dash + 1;
 	}

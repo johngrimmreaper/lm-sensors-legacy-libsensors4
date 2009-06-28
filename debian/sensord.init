@@ -45,6 +45,7 @@ case "$1" in
 	;;
   restart)
 	$0 stop
+	sleep 1
 	$0 start
 	;;
   force-reload)
@@ -52,8 +53,11 @@ case "$1" in
 		$0 restart
 	fi
 	;;
+  status)
+	status_of_proc $DAEMON $NAME && exit 0 || exit $?
+	;;
   *)
-	echo "Usage: /etc/init.d/sensord {start|stop|restart|force-reload}"
+	echo "Usage: /etc/init.d/sensord {start|stop|restart|force-reload|status}"
 	exit 1
 esac
 

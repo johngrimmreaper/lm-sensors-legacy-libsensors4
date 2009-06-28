@@ -21,6 +21,7 @@
  * MA 02110-1301 USA.
  */
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -32,69 +33,73 @@
 #include "sensord.h"
 #include "lib/error.h"
 
-static int
-loadConfig
-(const char *cfgPath, int reload) {
-  struct stat stats;
-  FILE *cfg = NULL;
-  int ret = 0;
+static int loadConfig(const char *cfgPath, int reload)
+{
+	int ret;
+ 	FILE *fp;
 
-  if (cfgPath && !strcmp (cfgPath, "-")) {
-    if (!reload) {
-      if ((ret = sensors_init (stdin))) {
-        sensorLog (LOG_ERR, "Error loading sensors configuration file <stdin>: %s",
-                   sensors_strerror (ret));
-        ret = 12;
-      }
-    }
-  } else if (cfgPath && stat (cfgPath, &stats) < 0) {
-    sensorLog (LOG_ERR, "Error stating sensors configuration file: %s", cfgPath);
-    ret = 10;
-  } else {
-    if (reload) {
-      sensorLog (LOG_INFO, "configuration reloading");
-      sensors_cleanup ();
-    }
-    if (cfgPath && !(cfg = fopen (cfgPath, "r"))) {
-      sensorLog (LOG_ERR, "Error opening sensors configuration file: %s", cfgPath);
-      ret = 11;
-    } else if ((ret = sensors_init (cfg))) {
-      sensorLog (LOG_ERR, "Error loading sensors configuration file %s: %s",
-                 cfgPath ? cfgPath : "(default)", sensors_strerror (ret));
-      ret = 11;
-    }
-    if (cfg)
-      fclose (cfg);
-  }
+ 	/* Load default configuration. */
+ 	if (!cfgPath) {
+ 		if (reload) {
+			sensorLog(LOG_INFO, "configuration reloading");
+			sensors_cleanup();
+		}
 
-  return ret;
+ 		ret = sensors_init(NULL);
+ 		if (ret) {
+ 			sensorLog(LOG_ERR, "Error loading default"
+ 				  " configuration file: %s",
+ 				  sensors_strerror(ret));
+ 			return -1;
+  		}
+ 		return 0;
+ 	}
+
+ 	fp = fopen(cfgPath, "r");
+ 	if (!fp) {
+ 		sensorLog(LOG_ERR, "Error opening config file %s: %s",
+ 			  strerror(errno));
+ 		return -1;
+ 	}
+
+	if (reload) {
+		sensorLog(LOG_INFO, "configuration reloading");
+		sensors_cleanup();
+	}
+ 	ret = sensors_init(fp);
+ 	if (ret) {
+ 		sensorLog(LOG_ERR, "Error loading sensors configuration file"
+			  " %s: %s", cfgPath, sensors_strerror(ret));
+ 		fclose(fp);
+ 		return -1;
+ 	}
+ 	fclose(fp);
+
+ 	return 0;
 }
 
-int
-loadLib
-(const char *cfgPath) {
-  int ret;
-  ret = loadConfig (cfgPath, 0);
-  if (!ret)
-    ret = initKnownChips ();
-  return ret;
+int loadLib(const char *cfgPath)
+{
+	int ret;
+	ret = loadConfig(cfgPath, 0);
+	if (!ret)
+		ret = initKnownChips();
+	return ret;
 }
 
-int
-reloadLib
-(const char *cfgPath) {
-  int ret;
-  freeKnownChips ();
-  ret = loadConfig (cfgPath, 1);
-  if (!ret)
-    ret = initKnownChips ();
-  return ret;
+int reloadLib(const char *cfgPath)
+{
+	int ret;
+	freeKnownChips();
+	ret = loadConfig(cfgPath, 1);
+	if (!ret)
+		ret = initKnownChips();
+	return ret;
 }
 
-int
-unloadLib
-(void) {
-  freeKnownChips ();
-  sensors_cleanup ();
-  return 0;  
+int unloadLib(void)
+{
+	freeKnownChips();
+	sensors_cleanup();
+	return 0;
 }

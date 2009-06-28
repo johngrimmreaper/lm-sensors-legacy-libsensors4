@@ -1,19 +1,19 @@
 --- a/prog/sensord/sense.c
 +++ b/prog/sensord/sense.c
-@@ -199,9 +199,14 @@
- (void) {
-   int ret = 0;
+@@ -205,9 +205,14 @@
+ {
+ 	int ret = 0;
  
--  sensorLog (LOG_DEBUG, "sensor sweep started"); /* only logged in debug mode */
-+/*
-+ * Debian mod: kill the debug messages, since they spam syslog every
-+ * minute. -- JEH
-+ */
-+  
-+/*  sensorLog (LOG_DEBUG, "sensor sweep started"); */
-   ret = doChips (DO_SCAN);
--  sensorLog (LOG_DEBUG, "sensor sweep finished");
-+/*  sensorLog (LOG_DEBUG, "sensor sweep finished"); */
+-	sensorLog(LOG_DEBUG, "sensor read started");
++	/* 
++	 * Debian mod: kill the debug messages, since they spam syslog every
++	 * minute. -- JEH
++	 */
++
++	/* sensorLog(LOG_DEBUG, "sensor read started"); */
+ 	ret = doChips(DO_READ);
+-	sensorLog(LOG_DEBUG, "sensor read finished");
++	/* sensorLog(LOG_DEBUG, "sensor read finished"); */
  
-   return ret;
+ 	return ret;
  }

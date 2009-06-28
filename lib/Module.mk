@@ -33,7 +33,7 @@ LIBMAN5FILES := $(MODULE_DIR)/sensors.conf.5
 # changed in a backward incompatible way.  The interface is defined by
 # the public header files - in this case they are error.h and sensors.h.
 LIBMAINVER := 4
-LIBMINORVER := 1.0
+LIBMINORVER := 2.0
 LIBVER := $(LIBMAINVER).$(LIBMINORVER)
 
 # The static lib name, the shared lib name, and the internal ('so') name of
@@ -43,8 +43,11 @@ LIBSHLIBNAME := libsensors.so.$(LIBVER)
 LIBSTLIBNAME := libsensors.a
 LIBSHSONAME := libsensors.so.$(LIBMAINVER)
 
-LIBTARGETS := $(MODULE_DIR)/$(LIBSTLIBNAME) $(MODULE_DIR)/$(LIBSHLIBNAME) \
+LIBTARGETS := $(MODULE_DIR)/$(LIBSHLIBNAME) \
               $(MODULE_DIR)/$(LIBSHSONAME) $(MODULE_DIR)/$(LIBSHBASENAME)
+ifeq ($(BUILD_STATIC_LIB),1)
+LIBTARGETS += $(MODULE_DIR)/$(LIBSTLIBNAME)
+endif
 
 LIBCSOURCES := $(MODULE_DIR)/data.c $(MODULE_DIR)/general.c \
                $(MODULE_DIR)/error.c $(MODULE_DIR)/access.c \
@@ -60,7 +63,7 @@ LIBHEADERFILES := $(MODULE_DIR)/error.h $(MODULE_DIR)/sensors.h
 
 # How to create the shared library
 $(MODULE_DIR)/$(LIBSHLIBNAME): $(LIBSHOBJECTS)
-	$(CC) -shared -Wl,-soname,$(LIBSHSONAME) -o $@ $^ -lc -lm
+	$(CC) -shared $(LDFLAGS) -Wl,-soname,$(LIBSHSONAME) -o $@ $^ -lc -lm
 
 $(MODULE_DIR)/$(LIBSHSONAME): $(MODULE_DIR)/$(LIBSHLIBNAME)
 	$(RM) $@
@@ -83,7 +86,7 @@ $(MODULE_DIR)/conf-parse.c: $(MODULE_DIR)/conf-parse.y $(MODULE_DIR)/general.h \
 $(MODULE_DIR)/conf-parse.h: $(MODULE_DIR)/conf-parse.c
 
 # Include all dependency files
-INCLUDEFILES += $(LIBCSOURCES:.c=.ld) $(LIBCSOURCES:.c=.ad)
+INCLUDEFILES += $(LIBSHOBJECTS:.lo=.ld) $(LIBSTOBJECTS:.ao=.ad)
 
 # Special warning prevention for flex-generated files
 FLEXNOWARN:=-Wno-shadow -Wno-undef -Wno-unused -Wno-missing-prototypes -Wno-sign-compare
@@ -125,7 +128,9 @@ install-lib: all-lib
 	     echo '         Run the following command: /sbin/ldconfig' ; \
 	     echo '******************************************************************************' ; \
 	fi
+ifeq ($(BUILD_STATIC_LIB),1)
 	$(INSTALL) -m 644 $(LIB_DIR)/$(LIBSTLIBNAME) $(DESTDIR)$(LIBDIR)
+endif
 	$(INSTALL) -m 755 $(LIB_DIR)/$(LIBSHLIBNAME) $(DESTDIR)$(LIBDIR)
 	$(LN) $(LIBSHLIBNAME) $(DESTDIR)$(LIBDIR)/$(LIBSHSONAME)
 	$(LN) $(LIBSHSONAME) $(DESTDIR)$(LIBDIR)/$(LIBSHBASENAME)
@@ -156,7 +161,10 @@ install-lib: all-lib
 user_install :: install-lib
 
 user_uninstall::
-	$(RM) $(REMOVELIBST) $(REMOVELIBSH) $(REMOVELNSO) $(REMOVELNBS) 
+	$(RM) $(REMOVELIBSH) $(REMOVELNSO) $(REMOVELNBS)
+ifeq ($(BUILD_STATIC_LIB),1)
+	$(RM) $(REMOVELIBST)
+endif
 	$(RM) $(REMOVELIBHF) $(REMOVEMAN3) $(REMOVEMAN5)
 # Remove directory if empty, ignore failure
 	$(RMDIR) $(DESTDIR)$(LIBINCLUDEDIR) 2> /dev/null || true

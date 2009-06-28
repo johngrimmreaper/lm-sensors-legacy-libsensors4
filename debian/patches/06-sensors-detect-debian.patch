@@ -1,12 +1,14 @@
---- a/prog/detect/sensors-detect
-+++ b/prog/detect/sensors-detect
+Index: lm_sensors-3.1.1/prog/detect/sensors-detect
+===================================================================
+--- lm_sensors-3.1.1.orig/prog/detect/sensors-detect	2009-06-02 15:51:29.000000000 +0200
++++ lm_sensors-3.1.1/prog/detect/sensors-detect	2009-06-28 22:19:24.000000000 +0200
 @@ -1,4 +1,4 @@
 -#!/usr/bin/perl -w
 +#!/usr/bin/perl
  #
  #    sensors-detect - Detect hardware monitoring chips
  #    Copyright (C) 1998 - 2002  Frodo Looijaard <frodol@dds.nl>
-@@ -5282,83 +5282,39 @@
+@@ -5446,83 +5446,39 @@
  		}
  	}
  
