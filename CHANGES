@@ -1,6 +1,32 @@
 lm-sensors CHANGES file
 -----------------------
 
+3.1.1 (2009-06-21)
+  isadump: Use geteuid instead of getuid so that setuid bit works
+  isaset: Use geteuid instead of getuid so that setuid bit works
+  libsensors: Don't rely on dirent->dt_type being set
+              New method to free the memory allocated for chip names
+  Makefile: Include generated source files in dependency checking
+            Make it possible to skip building of the static library
+  fancontrol: Add support for absolute path to hwmon devices
+  sensord: Remove the hidden commandline interface
+           Introduce struct sensord_arguments
+           Using sigaction for signal handlers
+           Convert to linux coding style
+           Cleanup and refactoring of the source code
+           Don't use the system log when generating a CGI script
+           Disable unit scaling for fan speeds
+           Use daemon logging facility instead of local4 by default
+           Fix a memory leak when a chip name is provided
+  sensors: Fix a memory leak when a chip name is provided
+  sensors-detect: Add nNidia nForce MCP78S SMBus detection
+                  Display Super-I/O address even if LD is disabled
+                  Differentiate between PC8374L and WPCD377I
+                  Use dmidecode to find IPMI interfaces if available
+                  Add Nuvoton W83795G/ADG detection
+                  Add National Semiconductor LM95241 detection
+                  Add Winbond/Nuvoton W83627DHG-P and W83627UHG detection
+
 3.1.0 "Happy Birthday Lina" (2009-02-28)
   libsensors: Add support for instantaneous power sensors
               Add support for current sensors
