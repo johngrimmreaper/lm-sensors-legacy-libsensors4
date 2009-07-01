@@ -5,3 +5,4 @@
 05-sensord-manpage.patch
 06-sensors-detect-debian.patch
 07-sensors-detect-modprobe.conf.patch
+08-sensors3.conf-local-changes.patch

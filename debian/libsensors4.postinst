@@ -17,8 +17,6 @@ case "$1" in
 			(cd /dev && MAKEDEV i2c) || true
 		fi
 	fi
-	# Create the configuration file
-	ucf --debconf-ok --three-way /usr/share/libsensors4/sensors.conf.eg /etc/sensors3.conf
     ;;
     abort-upgrade|abort-remove|abort-deconfigure)
     ;;

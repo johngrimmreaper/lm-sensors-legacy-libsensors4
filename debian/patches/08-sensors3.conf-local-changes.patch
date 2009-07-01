@@ -1,0 +1,13 @@
+--- lm-sensors-3-3.1.1.orig/etc/sensors.conf.default
++++ lm-sensors-3-3.1.1/etc/sensors.conf.default
+@@ -7,6 +7,10 @@
+ #
+ # Better configuration files for specific mainboards can be found at
+ # http://www.lm-sensors.org/wiki/Configurations
++#
++# It is recommended not to modify this file, but to drop your local
++# changes in /etc/sensors.d/. File with names that start with a dot 
++# are ignored.
+ 
+ chip "lm78-*" "lm79-*" "lm80-*"
+ 

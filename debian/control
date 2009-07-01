@@ -21,7 +21,7 @@ Description: utilities to read temperature/voltage/fan sensors
 
 Package: libsensors4
 Architecture: any
-Depends: makedev (>= 2.3.1-45) | udev, ucf (>= 0.28), ${shlibs:Depends}, ${misc:Depends}
+Depends: makedev (>= 2.3.1-45) | udev, ${shlibs:Depends}, ${misc:Depends}
 Priority: optional
 Recommends: lm-sensors
 Section: libs
