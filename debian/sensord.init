@@ -2,8 +2,8 @@
 
 ### BEGIN INIT INFO
 # Provides:          sensord
-# Required-Start:    $local_fs $syslog lm-sensors
-# Required-Stop:     $local_fs $syslog
+# Required-Start:    $remote_fs $syslog lm-sensors
+# Required-Stop:     $remote_fs $syslog
 # Default-Start:     2 3 4 5
 # Default-Stop:      1
 # Short-Description: lm-sensors daemon
