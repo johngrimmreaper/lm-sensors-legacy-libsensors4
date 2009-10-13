@@ -3,7 +3,7 @@ Section: utils
 Priority: extra
 Build-Depends: debhelper (>= 5), quilt, bison, flex, librrd2-dev
 Maintainer: Aurelien Jarno <aurel32@debian.org>
-Standards-Version: 3.8.2
+Standards-Version: 3.8.3
 Homepage: http://www.lm-sensors.org
 
 Package: lm-sensors
