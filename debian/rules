@@ -64,14 +64,26 @@ install-stamp: build
 	        cp -f prog/dump/isaset.8 debian/lm-sensors/usr/share/man/man8 ; \
 	fi
 
-	dh_install -s --sourcedir=debian/tmp
+	dh_install --sourcedir=debian/tmp
 
 	touch install-stamp
 
 
 # Build architecture-independent files here.
 binary-indep: build install
-# We have nothing to do by default.
+	dh_testdir 
+	dh_testroot
+	dh_installchangelogs -i CHANGES
+	dh_installdocs -i -XCVS
+	dh_installinit -pfancontrol --restart-after-upgrade -- start 20 2 3 4 5 .
+	dh_installman -i
+	dh_link -i
+	dh_compress -i
+	dh_fixperms -i
+	dh_installdeb -i
+	dh_gencontrol -i
+	dh_md5sums -i
+	dh_builddeb -i
 
 # Build architecture-dependant files that arn't kernel modules here.
 binary-arch: build install
@@ -80,9 +92,8 @@ binary-arch: build install
 	dh_installchangelogs -s CHANGES
 	dh_installdocs -s -XCVS
 	dh_installexamples -s -XCVS -XModule.mk
-	dh_installinit -psensord -- start 20 2 3 4 5 . stop 20 1 .
-	dh_installinit -plm-sensors --name=fancontrol --no-restart-on-upgrade
-	dh_installinit -plm-sensors --name=lm-sensors --no-start -- start 47 S .
+	dh_installinit -plm-sensors --no-start -- start 47 S .
+	dh_installinit -psensord -- start 20 2 3 4 5 .
 	dh_installman -s
 	dh_link -s
 	dh_strip -s

@@ -28,7 +28,7 @@ case "$1" in
 		/usr/bin/sensors -s
 		/usr/bin/sensors > /dev/null
 	fi
-	log_end_msg $?
+	log_end_msg 0
 	;;
   stop)
 	;;

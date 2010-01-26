@@ -1,3 +1,15 @@
+lm-sensors-3 (1:3.1.1-5) unstable; urgency=low
+
+  * Split-out fancontro in a separate package (closes: bug#540677).
+  * Restart fancontrol in postinst instead of starting it (closes: 
+    bug#552197).
+  * Don't stop fancontrol in runlevel 0 1 6 (closes: bug#563835).
+  * Don't stop sensord in runlevel 1.
+  * Ignore failures to set sensors at boot time (closes: bug#566184,
+    bug#556361).
+
+ -- Aurelien Jarno <aurel32@debian.org>  Wed, 27 Jan 2010 00:00:33 +0100
+
 lm-sensors-3 (1:3.1.1-4) unstable; urgency=low
 
   * Bumped Standards-version to 3.8.3 (no changes).
