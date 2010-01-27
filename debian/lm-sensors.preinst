@@ -41,14 +41,22 @@ case "$1" in
                 rmdir --ignore-fail-on-non-empty /etc/modutils/
             fi
         fi
-        # Remove an old init script
-        if [ -h "/etc/rcS.d/S36lm-sensors" ] ; then
-            rm /etc/rcS.d/S36lm-sensors
-        fi
         # Remove an old config file
         if dpkg --compare-versions "$2" lt "1:3.1.0-1"; then
             rm_conffile lm-sensors /etc/modprobe.d/i2c
         fi
+	# Remove fancontrol related files
+        if dpkg --compare-versions "$2" lt "1:3.1.1-5"; then
+            if [ -x "/etc/init.d/fancontrol" ]; then
+                if [ -x "`which invoke-rc.d 2>/dev/null`" ]; then
+                    invoke-rc.d fancontrol stop || exit $?
+                else
+                    /etc/init.d/fancontrol stop || exit $?
+                fi
+                rm_conffile lm-sensors /etc/init.d/fancontrol
+                update-rc.d fancontrol remove >/dev/null || exit $?
+            fi
+        fi 
 	# Rename a file possibly created by sensors-detect
         if dpkg --compare-versions "$2" lt "1:3.1.0-1"; then
             if [ -f /etc/modprobe.d/lm-sensors ] && ! [ -f /etc/modprobe.d/lm-sensors.conf ] ; then
