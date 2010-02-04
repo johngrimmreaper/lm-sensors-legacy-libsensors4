@@ -1,7 +1,10 @@
-Index: lm_sensors-3.1.1/etc/sensors-conf-convert.1
-===================================================================
---- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ lm_sensors-3.1.1/etc/sensors-conf-convert.1	2009-06-28 22:11:24.000000000 +0200
+---
+ etc/Module.mk              |    3 ++
+ etc/sensors-conf-convert.1 |   53 +++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 56 insertions(+)
+
+--- /dev/null
++++ b/etc/sensors-conf-convert.1
 @@ -0,0 +1,53 @@
 +.\" Copyright (C) 2007 Jean Delvare <khali@linux-fr.org>
 +.\" sensors-conf-convert is distributed under the GPL
@@ -56,18 +59,18 @@ Index: lm_sensors-3.1.1/etc/sensors-conf-convert.1
 +.SH AUTHOR
 +Jean Delvare.
 +
-Index: lm_sensors-3.1.1/etc/Module.mk
-===================================================================
---- lm_sensors-3.1.1.orig/etc/Module.mk	2009-06-28 22:10:13.000000000 +0200
-+++ lm_sensors-3.1.1/etc/Module.mk	2009-06-28 22:11:24.000000000 +0200
-@@ -28,10 +28,13 @@
+--- a/etc/Module.mk
++++ b/etc/Module.mk
+@@ -28,6 +28,8 @@
  	fi
  	$(MKDIR) $(DESTDIR)$(BINDIR)
  	$(INSTALL) -m 755 $(ETC_DIR)/sensors-conf-convert $(DESTDIR)$(BINDIR)
 +	$(MKDIR) $(DESTDIR)$(MANDIR)/man1
 +	$(INSTALL) -m 644 $(ETC_DIR)/sensors-conf-convert.1 $(DESTDIR)$(MANDIR)/man1
- 
- user_install :: install-etc
+ 	if [ -e $(DESTDIR)$(ETCDIR)/modprobe.d/lm_sensors \
+ 	     -a ! -e $(DESTDIR)$(ETCDIR)/modprobe.d/lm_sensors.conf ] ; then \
+ 	  $(MV) $(DESTDIR)$(ETCDIR)/modprobe.d/lm_sensors $(DESTDIR)$(ETCDIR)/modprobe.d/lm_sensors.conf ; \
+@@ -37,5 +39,6 @@
  
  uninstall-etc:
  	$(RM) $(DESTDIR)$(BINDIR)/sensors-conf-convert

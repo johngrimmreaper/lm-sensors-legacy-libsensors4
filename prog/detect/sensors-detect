@@ -41,7 +41,7 @@ use constant NO_CACHE => 1;
 use vars qw(@pci_adapters @chip_ids @ipmi_ifs @non_hwmon_chip_ids
 	    $i2c_addresses_to_scan $revision @i2c_byte_cache);
 
-$revision = '$Revision: 5729 $ ($Date: 2009-06-02 15:51:29 +0200 (mar. 02 juin 2009) $)';
+$revision = '$Revision: 5818 $ ($Date: 2010-01-18 17:22:07 +0100 (lun. 18 janv. 2010) $)';
 $revision =~ s/\$\w+: (.*?) \$/$1/g;
 $revision =~ s/ \([^()]*\)//;
 
@@ -390,7 +390,12 @@ $revision =~ s/ \([^()]*\)//;
 	}, {
 		vendid	=> 0x1002,
 		devid	=> 0x4385,
-		procid	=> "ATI Technologies Inc SB600 SMBus",
+		procid	=> "ATI Technologies Inc SB600/SB700/SB800 SMBus",
+		driver	=> "i2c-piix4",
+	}, {
+		vendid	=> 0x1022,
+		devid	=> 0x780b,
+		procid	=> "AMD Hudson-2 SMBus",
 		driver	=> "i2c-piix4",
 	}, {
 		vendid	=> 0x100B,
@@ -417,7 +422,7 @@ $revision =~ s/ \([^()]*\)//;
 
 # Look-up table to find out an I2C bus' driver based on the bus name.
 # The match field should contain a regular expression matching the I2C
-# bus name as it would appear in /sys/class/i2c-adapter.
+# bus name as it would appear in sysfs.
 # Note that new drivers probably don't need to be added to this table
 # if they bind to their device, as we will be able to get the driver name
 # from sysfs directly.
@@ -563,8 +568,8 @@ use vars qw(@i2c_adapter_names);
 		i2c_detect => sub { adt7467_detect(@_, 4); },
 	}, {
 		name => "Analog Devices ADT7473",
-		driver => "adt7473",
-		i2c_addrs => [0x2e],
+		driver => sub { kernel_version_at_least(2, 6, 33) ? "adt7475" : "adt7473" },
+		i2c_addrs => [0x2c..0x2e],
 		i2c_detect => sub { adt7473_detect(@_, 0); },
 	}, {
 		name => "Analog Devices ADT7475",
@@ -573,9 +578,19 @@ use vars qw(@i2c_adapter_names);
 		i2c_detect => sub { adt7473_detect(@_, 1); },
 	}, {
 		name => "Analog Devices ADT7476",
-		driver => "to-be-written",
+		driver => "adt7475",
 		i2c_addrs => [0x2c..0x2e],
 		i2c_detect => sub { adt7467_detect(@_, 1); },
+	}, {
+		name => "Analog Devices ADT7490",
+		driver => "adt7475",
+		i2c_addrs => [0x2c..0x2e],
+		i2c_detect => sub { adt7490_detect(@_); },
+	}, {
+		name => "Analog Devices ADT7411",
+		driver => "to-be-written",
+		i2c_addrs => [0x48, 0x4a, 0x4b],
+		i2c_detect => sub { adt7411_detect(@_); },
 	}, {
 		name => "Andigilog aSC7511",
 		driver => "to-be-written",
@@ -663,7 +678,7 @@ use vars qw(@i2c_adapter_names);
 		i2c_addrs => [0x28..0x2f],
 		i2c_detect => sub { w83781d_detect(@_, 9); },
 	}, {
-		name => "Winbond W83627DHG",
+		name => "Winbond W83627DHG/W83667HG/W83677HG",
 		driver => "use-isa-instead",
 		i2c_addrs => [0x28..0x2f],
 		i2c_detect => sub { w83781d_detect(@_, 10); },
@@ -894,9 +909,14 @@ use vars qw(@i2c_adapter_names);
 		i2c_detect => sub { lm90_detect(@_, 7); },
 	}, {
 		name => "Winbond W83L771W/G",
-		driver => "lm90",
+		driver => "to-be-written",
 		i2c_addrs => [0x4c],
 		i2c_detect => sub { lm90_detect(@_, 8); },
+	}, {
+		name => "Winbond W83L771AWG/ASG",
+		driver => "lm90",
+		i2c_addrs => [0x4c],
+		i2c_detect => sub { lm90_detect(@_, 11); },
 	}, {
 		name => "Texas Instruments TMP401",
 		driver => "tmp401",
@@ -904,9 +924,29 @@ use vars qw(@i2c_adapter_names);
 		i2c_detect => sub { lm90_detect(@_, 9); },
 	}, {
 		name => "Texas Instruments TMP411",
-		driver => "to-be-written",
+		driver => "tmp401",
 		i2c_addrs => [0x4c..0x4e],
 		i2c_detect => sub { lm90_detect(@_, 10); },
+	}, {
+		name => "Texas Instruments TMP421",
+		driver => "tmp421",
+		i2c_addrs => [0x2a, 0x4c..0x4f], # 0x1c-0x1f not probed.
+		i2c_detect => sub { tmp42x_detect(@_, 0); },
+	}, {
+		name => "Texas Instruments TMP422",
+		driver => "tmp421",
+		i2c_addrs => [0x4c..0x4f],
+		i2c_detect => sub { tmp42x_detect(@_, 1); },
+	}, {
+		name => "Texas Instruments TMP423",
+		driver => "tmp421",
+		i2c_addrs => [0x4c, 0x4d],
+		i2c_detect => sub { tmp42x_detect(@_, 2); },
+	}, {
+		name => "Texas Instruments AMC6821",
+		driver => "amc6821",
+		i2c_addrs => [0x18..0x1a, 0x2c..0x2e, 0x4c..0x4e],
+		i2c_detect => sub { amc6821_detect(@_); },
 	}, {
 		name => "National Semiconductor LM95231",
 		driver => "to-be-written",
@@ -932,6 +972,11 @@ use vars qw(@i2c_adapter_names);
 		driver => "lm63", # Not yet
 		i2c_addrs => [0x4c],
 		i2c_detect => sub { lm63_detect(@_, 2); },
+	}, {
+		name => "National Semiconductor LM73",
+		driver => "lm73",
+		i2c_addrs => [0x48..0x4a, 0x4c..0x4e],
+		i2c_detect => sub { lm73_detect(@_); },
 	}, {
 		name => "National Semiconductor LM92",
 		driver => "lm92",
@@ -1415,7 +1460,7 @@ use constant FEAT_SMBUS	=> (1 << 7);
 		features => FEAT_FAN,
 	}, {
 		name => "SMSC LPC47M233 Super IO Sensors",
-		driver => "smsc47m1",
+		driver => "to-be-written",
 		devid => 0x6b80,
 		devid_mask => 0xff80,
 		logdev => 0x0a,
@@ -1639,6 +1684,20 @@ use constant FEAT_SMBUS	=> (1 << 7);
 		logdev => 0x0b,
 		features => FEAT_IN | FEAT_FAN | FEAT_TEMP,
 	}, {
+		name => "Nuvoton W83667HG-B Super IO Sensors",
+		driver => "to-be-written",	# Probably w83627ehf
+		devid => 0xB350,
+		devid_mask => 0xFFF0,
+		logdev => 0x0b,
+		features => FEAT_IN | FEAT_FAN | FEAT_TEMP,
+	}, {
+		name => "Nuvoton W83677HG-I Super IO Sensors",
+		driver => "to-be-written",	# Probably w83627ehf
+		devid => 0xB470,
+		devid_mask => 0xFFF0,
+		logdev => 0x0b,
+		features => FEAT_IN | FEAT_FAN | FEAT_TEMP,
+	}, {
 		name => "Winbond W83L517D Super IO",
 		driver => "not-a-sensor",
 		devid => 0x61,
@@ -1652,6 +1711,12 @@ use constant FEAT_SMBUS	=> (1 << 7);
 		name => "Fintek F71862FG Super IO Sensors",
 		driver => "f71882fg",
 		devid => 0x0601,
+		logdev => 0x04,
+		features => FEAT_IN | FEAT_FAN | FEAT_TEMP,
+	}, {
+		name => "Fintek F71869FG Super IO Sensors",
+		driver => "to-be-written",
+		devid => 0x0814,
 		logdev => 0x04,
 		features => FEAT_IN | FEAT_FAN | FEAT_TEMP,
 	}, {
@@ -1674,9 +1739,9 @@ use constant FEAT_SMBUS	=> (1 << 7);
 		features => FEAT_IN | FEAT_FAN | FEAT_TEMP,
 	}, {
 		name => "Fintek F71889FG Super IO Sensors",
-		driver => "to-be-written",
+		driver => "f71882fg",
 		devid => 0x0723,
-		logdev => 0x04, # Verify once we have a datasheet
+		logdev => 0x04,
 		features => FEAT_IN | FEAT_FAN | FEAT_TEMP,
 	}, {
 		name => "Fintek F81216D Super IO",
@@ -1780,7 +1845,7 @@ use constant FEAT_SMBUS	=> (1 << 7);
 		ns_detect => \&smsc_ns_detect_superio,
 		ns_chips => \@superio_ids_smsc_ns,
 	}, {
-		family => "VIA/Winbond/Fintek",
+		family => "VIA/Winbond/Nuvoton/Fintek",
 		guess => 0x290,
 		enter =>
 		{
@@ -1828,21 +1893,33 @@ use vars qw(@cpu_ids);
 		driver => "k8temp",
 		detect => \&k8temp_pci_detect,
 	}, {
-		name => "AMD K10 thermal sensors",
-		driver => "to-be-written",
-		detect => \&k10temp_pci_detect,
+		name => "AMD Family 10h thermal sensors",
+		driver => "k10temp",
+		detect => \&fam10h_pci_detect,
+	}, {
+		name => "AMD Family 11h thermal sensors",
+		driver => "k10temp",
+		detect => \&fam11h_pci_detect,
 	}, {
 		name => "Intel Core family thermal sensor",
 		driver => "coretemp",
-		detect => \&coretemp_detect,
+		detect => sub { coretemp_detect(0); },
+	}, {
+		name => "Intel Atom thermal sensor",
+		driver => "coretemp",
+		detect => sub { coretemp_detect(1); },
 	}, {
 		name => "Intel AMB FB-DIMM thermal sensor",
 		driver => "i5k_amb",
 		detect => \&intel_amb_detect,
 	}, {
-		name => "VIA C7 thermal and voltage sensors",
-		driver => "c7temp",
-		detect => \&c7temp_detect,
+		name => "VIA C7 thermal sensor",
+		driver => "via-cputemp",
+		detect => \&via_c7_detect,
+	}, {
+		name => "VIA Nano thermal sensor",
+		driver => "via-cputemp",
+		detect => \&via_nano_detect,
 	}
 );
 
@@ -2109,25 +2186,17 @@ sub initialize_cpu_list
 }
 
 # @i2c_adapters is a list of references to hashes, one hash per I2C/SMBus
-# adapter present on the system. Each entry has the following keys: name
-# (directly taken from /sys/class/i2c-adapter), driver and autoload.
+# adapter present on the system. Each entry has the following keys: path,
+# parent, name (directly taken from sysfs), driver and autoload.
 use vars qw(@i2c_adapters);
 
 # Find out whether the driver would be automatically loaded by the modalias
 # mechanism.
-sub classdev_driver_autoloads
+sub device_driver_autoloads
 {
-	my $classdev = shift;
+	my $device = shift;
 	
-	my $modalias = sysfs_device_attribute("$classdev/device", "modalias");
-	if (!defined($modalias)) {
-		my $dev_link = readlink("$classdev/device");
-		if ($dev_link) {
-			$dev_link =~ s/\/[^\/]*$//;
-			$modalias = sysfs_device_attribute("$classdev/$dev_link",
-							   "modalias");
-		}
-	}
+	my $modalias = sysfs_device_attribute($device, "modalias");
 	return 0 unless defined($modalias);
 
 	# At the moment we only handle PCI and USB drivers. Other driver
@@ -2143,30 +2212,55 @@ sub classdev_driver_autoloads
 
 sub initialize_i2c_adapters_list
 {
-	my $entry;
+	my ($entry, $base_dir, $have_i2c_adapter_class);
 	local $_;
 
-	my $class_dir = "${sysfs_root}/class/i2c-adapter";
-	opendir(local *ADAPTERS, $class_dir) or return;
+	if (-d "${sysfs_root}/class/i2c-adapter") {
+		$base_dir = "${sysfs_root}/class/i2c-adapter";
+		$have_i2c_adapter_class = 1;
+	} else {
+		$base_dir = "${sysfs_root}/bus/i2c/devices";
+		$have_i2c_adapter_class = 0;
+	}
+	opendir(local *ADAPTERS, $base_dir) or return;
 
 	while (defined($_ = readdir(ADAPTERS))) {
 		next unless m/^i2c-(\d+)$/;
+		my $nr = $1;
 		$entry = {}; # New entry
-		$entry->{name} = sysfs_device_attribute("${class_dir}/i2c-$1",
-							"name")
-			      || sysfs_device_attribute("${class_dir}/i2c-$1/device",
-							"name");
+
+		# The layout in sysfs has changed over the years
+		if ($have_i2c_adapter_class) {
+			my $link = readlink("${base_dir}/i2c-$nr/device");
+			if (!defined $link) {
+				$entry->{path} = "${base_dir}/i2c-$nr";
+				$entry->{parent} = "${base_dir}/i2c-$nr";
+			} elsif ($link =~ m/^(.*)\/i2c-$nr$/) {
+				$entry->{path} = "${base_dir}/i2c-$nr/device";
+				$entry->{parent} = "${base_dir}/i2c-$nr/$1";
+			} else {
+				$entry->{path} = "${base_dir}/i2c-$nr";
+				$entry->{parent} = "$entry->{path}/device";
+			}
+		} else {
+			my $link = readlink("${base_dir}/i2c-$nr");
+			$link =~ s/\/i2c-$nr$//;
+			$entry->{path} = "${base_dir}/i2c-$nr";
+			$entry->{parent} = "${base_dir}/$link";
+		}
+
+		$entry->{name} = sysfs_device_attribute($entry->{path}, "name");
 		next if $entry->{name} eq "ISA main adapter";
 
 		# First try to get the I2C adapter driver name from sysfs,
 		# and if it fails, fall back to searching our list of known
 		# I2C adapters.
-		$entry->{driver} = sysfs_device_driver("${class_dir}/i2c-$1/device")
+		$entry->{driver} = sysfs_device_driver($entry->{parent})
 				|| find_i2c_adapter_driver($entry->{name})
 				|| 'UNKNOWN';
 
-		$entry->{autoload} = classdev_driver_autoloads("${class_dir}/i2c-$1");
-		$i2c_adapters[$1] = $entry;
+		$entry->{autoload} = device_driver_autoloads($entry->{parent});
+		$i2c_adapters[$nr] = $entry;
 	}
 	closedir(ADAPTERS);
 }
@@ -2187,7 +2281,7 @@ sub initialize_hwmon_autoloaded
 		$driver = sysfs_device_driver("${class_dir}/$hwmon/device");
 		next unless defined($driver);
 
-		if (classdev_driver_autoloads("${class_dir}/$hwmon")) {
+		if (device_driver_autoloads("${class_dir}/$hwmon/device")) {
 			$driver =~ tr/-/_/;
 			$hwmon_autoloaded{$driver}++
 		}
@@ -2518,7 +2612,8 @@ sub adapter_pci_detection
 		$device = $pci_list{$key};
 		$smbus{$key}++
 			if exists $device->{class} &&
-			   $device->{class} == 0x0c05; # SMBus
+			   ($device->{class} == 0x0c01 ||	# Access Bus
+			    $device->{class} == 0x0c05);	# SMBus
 	}
 
 	# Loop over the known I2C/SMBus adapters
@@ -2562,7 +2657,7 @@ sub adapter_pci_detection
 		unless $count;
 }
 
-# $_[0]: Adapter description as found in /sys/class/i2c-adapter
+# $_[0]: Adapter description as found in sysfs
 sub find_i2c_adapter_driver
 {
 	my $name = shift;
@@ -3065,18 +3160,17 @@ sub probe_free_i2c_address
 	}
 }
 
-# $_[0]: The number of the adapter to check
+# $_[0]: The device to check (PCI or not)
 # Returns: PCI class of the adapter if available, 0 if not
-sub get_i2c_adapter_class
+sub get_pci_class
 {
-	my ($adapter_nr) = @_;
-	my ($adapter, $subsystem, $class);
+	my ($device) = @_;
+	my ($subsystem, $class);
 
-	$adapter = "$sysfs_root/class/i2c-adapter/i2c-$adapter_nr";
-	$subsystem = sysfs_device_subsystem("$adapter/device");
+	$subsystem = sysfs_device_subsystem($device);
 	return 0 unless defined $subsystem && $subsystem eq "pci";
 
-	$class = sysfs_device_attribute("$adapter/device", "class");
+	$class = sysfs_device_attribute($device, "class");
 	return 0 unless defined $class;
 	$class = oct($class) if $class =~ /^0/;
 	return $class >> 8;
@@ -3088,7 +3182,7 @@ sub scan_i2c_adapter
 	my ($adapter_nr, $smbus_default) = @_;
 	my ($funcs, $chip, $addr, $class, $default, $input, @not_to_scan);
 
-	$class = get_i2c_adapter_class($adapter_nr);
+	$class = get_pci_class($i2c_adapters[$adapter_nr]->{parent});
 	if (($class & 0xff00) == 0x0400) {
 		# Do not probe adapters on PCI multimedia cards by default
 		$default = 0;
@@ -3559,6 +3653,37 @@ sub lm75_detect
 # Registers used:
 #   0x00: Temperature
 #   0x01: Configuration
+#   0x02: High Limit
+#   0x03: Low Limit
+#   0x04: Status
+#   0x07: Manufacturer ID and Product ID
+sub lm73_detect
+{
+	my ($file, $addr) = @_;
+
+	my $conf = i2c_smbus_read_byte_data($file, 0x01);
+	my $status = i2c_smbus_read_byte_data($file, 0x04);
+
+	# Bits that always return 0
+	return if ($conf & 0x0c) or ($status & 0x10);
+
+	return if i2c_smbus_read_word_data($file, 0x07) != 0x9001;
+
+	# Make sure the chip supports SMBus read word transactions
+	my $cur = i2c_smbus_read_word_data($file, 0x00);
+	return if $cur < 0;
+	my $high = i2c_smbus_read_word_data($file, 0x02);
+	return if $high < 0;
+	my $low = i2c_smbus_read_word_data($file, 0x03);
+	return if $low < 0;
+	return if ($cur & 0x0300) or (($high | $low) & 0x1f00);
+
+	return 3;
+}
+
+# Registers used:
+#   0x00: Temperature
+#   0x01: Configuration
 #   0x02: Hysteresis
 #   0x03: Overtemperature Shutdown
 #   0x04: Low limit
@@ -3816,7 +3941,8 @@ sub lm83_detect
 # Chip to detect: 0 = LM90, 1 = LM89/LM99, 2 = LM86, 3 = ADM1032,
 #		  4 = MAX6654/MAX6690, 5 = ADT7461,
 #		  6 = MAX6646/MAX6647/MAX6648/MAX6649/MAX6692,
-#		  7 = MAX6680/MAX6681, 8 = W83L771W/G, 9 = TMP401, 10 = TMP411
+#		  7 = MAX6680/MAX6681, 8 = W83L771W/G, 9 = TMP401, 10 = TMP411,
+#		  11 = W83L771AWG/ASG
 # Registers used:
 #   0x03: Configuration
 #   0x04: Conversion rate
@@ -3886,7 +4012,7 @@ sub lm90_detect
 		return if ($conf & 0x2a) != 0;
 		return if $rate > 0x09;
 		return if $mid != 0x5c;		# Winbond
-		return 6 if $cid == 0x00;	# W83L771W/G
+		return 6 if ($cid & 0xfe) == 0x00; # W83L771W/G
 	}
 	if ($chip == 9) {
 		return if ($conf & 0x1B) != 0;
@@ -3902,6 +4028,53 @@ sub lm90_detect
 		return 6 if ($addr == 0x4d && $cid == 0x13); # TMP411B
 		return 6 if ($addr == 0x4e && $cid == 0x10); # TMP411C
 	}
+	if ($chip == 11) {
+		return if ($conf & 0x2a) != 0;
+		return if $rate > 0x08;
+		return if $mid != 0x5c;		# Winbond
+		return 6 if ($cid & 0xfe) == 0x10; # W83L771AWG/ASG
+	}
+	return;
+}
+
+# Chip to detect: 0 = TMP421, 1 = TMP422, 2 = TMP423
+# Registers used:
+#   0xfe: Manufactorer ID
+#   0xff: Device ID
+sub tmp42x_detect()
+{
+	my ($file, $addr, $chip) = @_;
+
+	my $mid = i2c_smbus_read_byte_data($file, 0xfe);
+	my $cid = i2c_smbus_read_byte_data($file, 0xff);
+
+	return if ($mid != 0x55);
+
+	return 6 if ($chip == 0 && $cid == 0x21); # TMP421
+	return 6 if ($chip == 1 && $cid == 0x22); # TMP422
+	return 6 if ($chip == 2 && $cid == 0x23); # TMP423
+
+	return;
+}
+
+# Registers used:
+#   0x3d: Device ID
+#   0x3e: Company ID
+sub amc6821_detect()
+{
+	my ($file, $addr) = @_;
+
+	my $dev_id = i2c_smbus_read_byte_data($file, 0x3d);
+	my $comp_id = i2c_smbus_read_byte_data($file, 0x3e);
+
+	return if ($comp_id != 0x49);		# Texas Instruments
+
+	# Bit 7 of register address is ignored
+	return if i2c_smbus_read_byte_data($file, 0x80 | 0x3d) != $dev_id;
+	return if i2c_smbus_read_byte_data($file, 0x80 | 0x3e) != $comp_id;
+
+	return 6 if ($dev_id == 0x21);		# AMC6821
+
 	return;
 }
 
@@ -4132,7 +4305,7 @@ sub adt7467_detect
 	return if $mid != 0x41;			# Analog Devices
 
 	if ($chip == 0) {
-		return if $cid != 0x68;		# ADT7467
+		return if $cid != 0x68;		# ADT7467/ADT7468
 		return if ($drev & 0xf0) != 0x70;
 		return 7 if $drev == 0x71 || $drev == 0x72;
 		return 5;
@@ -4140,7 +4313,7 @@ sub adt7467_detect
 	if ($chip == 1) {
 		return if $cid != 0x76;		# ADT7476
 		return if ($drev & 0xf0) != 0x60;
-		return 7 if $drev == 0x69;
+		return 7 if $drev >= 0x69 && $drev <= 0x6b;
 		return 5;
 	}
 	if ($chip == 2) {
@@ -4177,6 +4350,39 @@ sub adt7473_detect
 
 	return if $chip == 0 && $cid != 0x73;	# ADT7473
 	return if $chip == 1 && $cid != 0x75;	# ADT7475
+	return 5;
+}
+
+# Registers used:
+#   0x3e: Manufacturer ID
+#   0x3f: Chip ID
+sub adt7490_detect
+{
+	my ($file, $addr) = @_;
+	my $mid = i2c_smbus_read_byte_data($file, 0x3e);
+	my $cid = i2c_smbus_read_byte_data($file, 0x3f);
+
+	return if $mid != 0x41;			# Analog Devices
+	return if ($cid & 0xfc) != 0x6c;	# ADT7490
+	return 5;
+}
+
+# Registers used:
+#   0x4d: Device ID
+#   0x4e: Manufacturer ID
+#   0x4e: Silicon revision
+sub adt7411_detect
+{
+	my ($file, $addr) = @_;
+	my $dev_id = i2c_smbus_read_byte_data($file, 0x4d);
+	my $man_id = i2c_smbus_read_byte_data($file, 0x4e);
+	my $revision = i2c_smbus_read_byte_data($file, 0x4f);
+
+	return if $man_id != 0x41;		# Analog Devices
+	return if $dev_id != 0x02;		# ADT7411
+	# The datasheet suggests that the version is in the high nibble, but
+	# a dump from a real ADT7411 chip shows that it is in the low nibble.
+	return if ($revision & 0x0f) != 0x04;	# ADT7411
 	return 5;
 }
 
@@ -4307,7 +4513,8 @@ sub lm87_detect
 
 # Chip to detect: 0 = W83781D, 1 = W83782D, 2 = W83783S, 3 = W83627HF,
 #		  4 = AS99127F (rev.1), 5 = AS99127F (rev.2), 6 = ASB100,
-#		  7 = W83791D, 8 = W83792D, 9 = W83627EHF, 10 = W83627DHG
+#		  7 = W83791D, 8 = W83792D, 9 = W83627EHF,
+#		  10 = W83627DHG/W83667HG/W83677HG
 # Registers used:
 #   0x48: Full I2C Address
 #   0x4a: I2C addresses of emulated LM75 chips
@@ -4985,7 +5192,7 @@ sub max6650_detect
 	return if i2c_smbus_read_byte_data($file, 0x14) & 0xE0;
 	return if ($conf & 0xC0) or ($conf & 0x07) > 4;
 
-	return 3;
+	return 2;
 }
 
 sub max6655_detect
@@ -5201,9 +5408,35 @@ sub k8temp_pci_detect
 	return 9;
 }
 
-sub k10temp_pci_detect
+sub fam10h_pci_detect
 {
 	return unless exists $pci_list{'1022:1203'};
+
+	# Errata 319 (Inaccurate Temperature Measurement) affects
+	# revisions DR-BA, DR-B2 and DR-B3, all have model number = 2.
+	# Revisions RB-C2 and HY-D0 are also affected.
+	my $probecpu;
+	foreach $probecpu (@cpu) {
+		next unless $probecpu->{vendor_id} eq 'AuthenticAMD' &&
+			    $probecpu->{'cpu family'} == 0x10;
+
+		next if $probecpu->{model} < 4;		# DR-B*
+		next if $probecpu->{model} == 8;	# HY-D0
+		if ($probecpu->{model} == 4) {		# RB-C*
+			my @dram_cfg = split /\n/, `setpci -d 1022:1202 94.L 2>/dev/null`;
+			next unless @dram_cfg >= 1;
+			next unless hex($dram_cfg[0]) & 0x00000100;	# DDR3
+		}
+
+		return 9;
+	}
+	
+	return;
+}
+
+sub fam11h_pci_detect
+{
+	return unless exists $pci_list{'1022:1303'};
 	return 9;
 }
 
@@ -5218,22 +5451,25 @@ sub intel_amb_detect
 
 sub coretemp_detect
 {
+	my $chip = shift;
 	my $probecpu;
+
 	foreach $probecpu (@cpu) {
-		if ($probecpu->{vendor_id} eq 'GenuineIntel' &&
-				$probecpu->{'cpu family'} == 6 &&
-				($probecpu->{model} == 14 ||
-				 $probecpu->{model} == 15 ||
-				 $probecpu->{model} == 0x16 ||
-				 $probecpu->{model} == 0x17 ||
-				 $probecpu->{model} == 0x1a)) {
-			return 9;
-		}
+		next unless $probecpu->{vendor_id} eq 'GenuineIntel' &&
+			    $probecpu->{'cpu family'} == 6;
+		return 9 if $chip == 0 &&
+			($probecpu->{model} == 14 ||	# Pentium M DC
+			 $probecpu->{model} == 15 ||	# Core 2 DC 65nm
+			 $probecpu->{model} == 0x16 ||	# Core 2 SC 65nm
+			 $probecpu->{model} == 0x17 ||	# Penryn 45nm
+			 $probecpu->{model} == 0x1a);	# Nehalem
+		return 9 if $chip == 1 &&
+			($probecpu->{model} == 0x1c);	# Atom
 	}
 	return;
 }
 
-sub c7temp_detect
+sub via_c7_detect
 {
 	my $probecpu;
 	foreach $probecpu (@cpu) {
@@ -5241,6 +5477,19 @@ sub c7temp_detect
 				$probecpu->{'cpu family'} == 6 &&
 				($probecpu->{model} == 0xa ||
 				 $probecpu->{model} == 0xd)) {
+			return 9;
+		}
+	}
+	return;
+}
+
+sub via_nano_detect
+{
+	my $probecpu;
+	foreach $probecpu (@cpu) {
+		if ($probecpu->{vendor_id} eq 'CentaurHauls' &&
+				$probecpu->{'cpu family'} == 6 &&
+				$probecpu->{model} == 0xf) {
 			return 9;
 		}
 	}
@@ -5423,8 +5672,8 @@ sub write_config
 
 	if (defined $configfile) {
 		my $have_modprobe_d = -d '/etc/modprobe.d';
-		printf "Do you want to \%s /etc/modprobe.d/lm_sensors? (\%s): ",
-		       (-e '/etc/modprobe.d/lm_sensors' ? 'overwrite' : 'generate'),
+		printf "Do you want to \%s /etc/modprobe.d/lm_sensors.conf? (\%s): ",
+		       (-e '/etc/modprobe.d/lm_sensors.conf' ? 'overwrite' : 'generate'),
 		       ($have_modprobe_d ? 'YES/no' : 'yes/NO');
 		$_ = <STDIN>;
 		if (($have_modprobe_d and not m/^\s*n/i) or m/^\s*y/i) {
@@ -5432,8 +5681,8 @@ sub write_config
 				mkdir('/etc/modprobe.d', 0777)
 					or die "Sorry, can't create /etc/modprobe.d ($!)";
 			}
-			open(local *MODPROBE_D, ">/etc/modprobe.d/lm_sensors")
-				or die "Sorry, can't create /etc/modprobe.d/lm_sensors ($!)";
+			open(local *MODPROBE_D, ">/etc/modprobe.d/lm_sensors.conf")
+				or die "Sorry, can't create /etc/modprobe.d/lm_sensors.conf ($!)";
 			print MODPROBE_D "# Generated by sensors-detect on " . scalar localtime() . "\n";
 			print MODPROBE_D $configfile;
 			close(MODPROBE_D);

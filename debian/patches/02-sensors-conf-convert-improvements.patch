@@ -1,3 +1,7 @@
+---
+ etc/sensors-conf-convert |   17 ++++++++++++++++-
+ 1 file changed, 16 insertions(+), 1 deletion(-)
+
 --- a/etc/sensors-conf-convert
 +++ b/etc/sensors-conf-convert
 @@ -34,7 +34,7 @@

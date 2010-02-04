@@ -1,6 +1,10 @@
+---
+ prog/sensord/sense.c |    9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
+
 --- a/prog/sensord/sense.c
 +++ b/prog/sensord/sense.c
-@@ -205,9 +205,14 @@
+@@ -240,9 +240,14 @@
  {
  	int ret = 0;
  

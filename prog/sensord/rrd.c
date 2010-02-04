@@ -68,8 +68,8 @@ static char rrdLabels[MAX_RRD_SENSORS][RAW_LABEL_LENGTH + 1];
 #define LOADAVG "loadavg"
 #define LOAD_AVERAGE "Load Average"
 
-typedef int (*FeatureFN) (void *data, const char *rawLabel, const char *label,
-			  const FeatureDescriptor *feature);
+typedef void (*FeatureFN) (void *data, const char *rawLabel, const char *label,
+			   const FeatureDescriptor *feature);
 
 static char rrdNextChar(char c)
 {
@@ -99,7 +99,7 @@ static void rrdCheckLabel(const char *rawLabel, int index0)
 		} else {
 			buffer[i] = '_';
 		}
-		++ i;
+		++i;
 	}
 	buffer[i] = '\0';
 
@@ -108,7 +108,7 @@ static void rrdCheckLabel(const char *rawLabel, int index0)
 
 	/* locate duplicates */
 	while (okay && (j < index0))
-		okay = strcmp(rrdLabels[j ++], buffer);
+		okay = strcmp(rrdLabels[j++], buffer);
 
 	/* uniquify duplicate labels with _? or _?? */
 	while (!okay) {
@@ -137,52 +137,72 @@ static void rrdCheckLabel(const char *rawLabel, int index0)
 	}
 }
 
-static int applyToFeatures(FeatureFN fn, void *data)
+static int _applyToFeatures(FeatureFN fn, void *data,
+			    const sensors_chip_name *chip,
+			    const ChipDescriptor *desc)
 {
-	const sensors_chip_name *chip;
-	int i, j, ret = 0, num = 0;
+	int i;
+	const FeatureDescriptor *features = desc->features;
+	const FeatureDescriptor *feature;
+	const char *rawLabel;
+	char *label;
 
-	for (j = 0; (ret == 0) && (j < sensord_args.numChipNames); ++ j) {
-		i = 0;
-		while ((ret == 0) && ((chip = sensors_get_detected_chips(&sensord_args.chipNames[j], &i)) != NULL)) {
-			int index0, chipindex = -1;
+	for (i = 0; i < MAX_RRD_SENSORS && features[i].format; ++i) {
+		feature = features + i;
+		rawLabel = feature->feature->name;
 
-			/* Trick: we compare addresses here. We know it works
-			 * because both pointers were returned by
-			 * sensors_get_detected_chips(), so they refer to
-			 * libsensors internal structures, which do not move.
-			 */
-			for (index0 = 0; knownChips[index0].features; ++index0)
-				if (knownChips[index0].name == chip) {
-					chipindex = index0;
-					break;
-				}
-			if (chipindex >= 0) {
-				const ChipDescriptor *descriptor = &knownChips[chipindex];
-				const FeatureDescriptor *features = descriptor->features;
+		label = sensors_get_label(chip, feature->feature);
+		if (!label) {
+			sensorLog(LOG_ERR, "Error getting sensor label: %s/%s",
+				  chip->prefix, rawLabel);
+			return -1;
+		}
 
-				for (index0 = 0; (ret == 0) && (num < MAX_RRD_SENSORS) && features[index0].format; ++index0) {
-					const FeatureDescriptor *feature = features + index0;
-					const char *rawLabel = feature->feature->name;
-					char *label = NULL;
+		rrdCheckLabel(rawLabel, i);
+		fn(data, rrdLabels[i], label, feature);
+		free(label);
+	}
+	return 0;
+}
 
-					if (!(label = sensors_get_label(chip, feature->feature))) {
-						sensorLog(LOG_ERR, "Error getting sensor label: %s/%s", chip->prefix, rawLabel);
-						ret = -1;
-					} else  {
-						rrdCheckLabel(rawLabel, num);
-						ret = fn(data,
-							 rrdLabels[num],
-							 label, feature);
-						++ num;
-					}
-					if (label)
-						free(label);
-				}
-			}
+static ChipDescriptor *lookup_known_chips(const sensors_chip_name *chip)
+{
+	int i;
+
+	/* Trick: we compare addresses here. We know it works
+	 * because both pointers were returned by
+	 * sensors_get_detected_chips(), so they refer to
+	 * libsensors internal structures, which do not move.
+	 */
+	for (i = 0; knownChips[i].features; i++) {
+		if (knownChips[i].name == chip) {
+			return &knownChips[i];
 		}
 	}
-	return ret;
+	return NULL;
+}
+
+static int applyToFeatures(FeatureFN fn, void *data)
+{
+	int i, i_detected, ret;
+	const sensors_chip_name *chip, *chip_arg;
+	ChipDescriptor *desc;
+
+	for (i = 0; i < sensord_args.numChipNames; i++) {
+		chip_arg = &sensord_args.chipNames[i];
+		i_detected = 0;
+		while ((chip = sensors_get_detected_chips(chip_arg,
+							  &i_detected))) {
+			desc = lookup_known_chips(chip);
+			if (!desc)
+				continue;
+
+			ret = _applyToFeatures(fn, data, chip, desc);
+			if (ret)
+				return ret;
+		}
+	}
+	return 0;
 }
 
 struct ds {
@@ -190,13 +210,13 @@ struct ds {
 	const char **argv;
 };
 
-static int rrdGetSensors_DS(void *_data, const char *rawLabel,
-			    const char *label,
-			    const FeatureDescriptor *feature)
+static void rrdGetSensors_DS(void *_data, const char *rawLabel,
+			     const char *label,
+			     const FeatureDescriptor *feature)
 {
 	(void) label; /* no warning */
 	if (!feature || feature->rrd) {
-		struct ds *data = (struct ds *) _data;
+		struct ds *data = _data;
 		char *ptr = rrdBuff + data->num * RRD_BUFF;
 		const char *min, *max;
 		data->argv[data->num ++] = ptr;
@@ -227,7 +247,6 @@ static int rrdGetSensors_DS(void *_data, const char *rawLabel,
 		sprintf(ptr, "DS:%s:GAUGE:%d:%s:%s", rawLabel, 5 *
 			sensord_args.rrdTime, min, max);
 	}
-	return 0;
 }
 
 static int rrdGetSensors(const char **argv)
@@ -236,7 +255,7 @@ static int rrdGetSensors(const char **argv)
 	struct ds data = { 0, argv};
 	ret = applyToFeatures(rrdGetSensors_DS, &data);
 	if (!ret && sensord_args.doLoad)
-		ret = rrdGetSensors_DS(&data, LOADAVG, LOAD_AVERAGE, NULL);
+		rrdGetSensors_DS(&data, LOADAVG, LOAD_AVERAGE, NULL);
 	return ret ? -1 : data.num;
 }
 
@@ -303,15 +322,14 @@ struct gr {
 	int loadAvg;
 };
 
-static int rrdCGI_DEF(void *_data, const char *rawLabel, const char *label,
-		      const FeatureDescriptor *feature)
+static void rrdCGI_DEF(void *_data, const char *rawLabel, const char *label,
+		       const FeatureDescriptor *feature)
 {
-	struct gr *data = (struct gr *) _data;
+	struct gr *data = _data;
 	(void) label; /* no warning */
 	if (!feature || (feature->rrd && (feature->type == data->type)))
 		printf("\n\tDEF:%s=%s:%s:AVERAGE", rawLabel,
 		       sensord_args.rrdFile, rawLabel);
-	return 0;
 }
 
 /*
@@ -339,14 +357,13 @@ static int rrdCGI_color(const char *label)
 	return color;
 }
 
-static int rrdCGI_LINE(void *_data, const char *rawLabel, const char *label,
-		       const FeatureDescriptor *feature)
+static void rrdCGI_LINE(void *_data, const char *rawLabel, const char *label,
+			const FeatureDescriptor *feature)
 {
-	struct gr *data = (struct gr *) _data;
+	struct gr *data = _data;
 	if (!feature || (feature->rrd && (feature->type == data->type)))
 		printf("\n\tLINE2:%s#%.6x:\"%s\"", rawLabel,
 		       rrdCGI_color(label), label);
-	return 0;
 }
 
 static struct gr graphs[] = {
@@ -449,28 +466,39 @@ int rrdCGI(void)
 {
 	int ret = 0, i;
 
-	printf("#!" RRDCGI "\n\n<HTML>\n<HEAD>\n<TITLE>sensord</TITLE>\n</HEAD>\n<BODY>\n<H1>sensord</H1>\n");
+	printf("#!" RRDCGI "\n\n<html>\n"
+	       "<head>\n<title>sensord</title>\n</head>\n"
+	       "<body>\n<h1>sensord</h1>\n");
+
 	for (i = 0; i < ARRAY_SIZE(graphs); i++) {
 		struct gr *graph = &graphs[i];
 
-		printf("<H2>%s</H2>\n", graph->h2);
-		printf("<P>\n<RRD::GRAPH %s/%s.png\n\t--imginfo '<IMG SRC=" WWWDIR "/%%s WIDTH=%%lu HEIGHT=%%lu>'\n\t-a PNG\n\t-h 200 -w 800\n",
+		printf("<h2>%s</h2>\n", graph->h2);
+		printf("<p>\n<RRD::GRAPH %s/%s.png\n\t--imginfo '"
+		       "<img src=" WWWDIR "/%%s width=%%lu height=%%lu>'"
+		       "\n\t-a PNG\n\t-h 200 -w 800\n",
 		       sensord_args.cgiDir, graph->image);
+
 		printf("\t--lazy\n\t-v '%s'\n\t-t '%s'\n\t-x '%s'\n\t%s",
 		       graph->axisTitle, graph->title, graph->axisDefn,
 		       graph->options);
 		if (!ret)
 			ret = applyToFeatures(rrdCGI_DEF, graph);
 		if (!ret && sensord_args.doLoad && graph->loadAvg)
-			ret = rrdCGI_DEF(graph, LOADAVG, LOAD_AVERAGE, NULL);
+			rrdCGI_DEF(graph, LOADAVG, LOAD_AVERAGE, NULL);
 		if (!ret)
 			ret = applyToFeatures(rrdCGI_LINE, graph);
 		if (!ret && sensord_args.doLoad && graph->loadAvg)
-			ret = rrdCGI_LINE(graph, LOADAVG, LOAD_AVERAGE, NULL);
-		printf (">\n</P>\n");
+			rrdCGI_LINE(graph, LOADAVG, LOAD_AVERAGE, NULL);
+		printf (">\n</p>\n");
 	}
-	printf("<p>\n<small><b>sensord</b> by <a href=\"mailto:merlin@merlin.org\">Merlin Hughes</a>, all credit to the <a href=\"http://www.lm-sensors.org/\">lm_sensors</a> crew.</small>\n</p>\n");
-	printf("</BODY>\n</HTML>\n");
+	printf("<p>\n<small><b>sensord</b> by "
+	       "<a href=\"mailto:merlin@merlin.org\">Merlin Hughes</a>"
+	       ", all credit to the "
+	       "<a href=\"http://www.lm-sensors.org/\">lm_sensors</a> "
+	       "crew.</small>\n</p>\n");
+
+	printf("</body>\n</html>\n");
 
 	return ret;
 }
