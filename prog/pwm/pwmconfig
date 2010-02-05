@@ -29,8 +29,8 @@
 #
 #
 
-REVISION=$(echo '$Revision: 5630 $' | cut -d' ' -f2)
-REVDATE=$(echo '$Date: 2009-01-29 09:28:17 +0100 (jeu. 29 janv. 2009) $' | cut -d' ' -f2)
+REVISION=$(echo '$Revision: 5770 $' | cut -d' ' -f2)
+REVDATE=$(echo '$Date: 2009-09-16 17:57:53 +0200 (mer. 16 sept. 2009) $' | cut -d' ' -f2)
 PIDFILE="/var/run/fancontrol.pid"
 
 if [ -f "$PIDFILE" ]
@@ -39,6 +39,12 @@ then
 	echo "fancontrol deamon is running. You should stop it before running pwmconfig."
 	echo "If you are certain that fancontrol is not running, then you can delete"
 	echo "$PIDFILE manually."
+	exit 1
+fi
+
+if [ "`id -u`" != "0" ]
+then
+	echo "You need to be root to run this script."
 	exit 1
 fi
 
@@ -258,7 +264,7 @@ do
 			GOODPWM="$GOODPWM $i"
 		fi
 	else
-		NOTROOT=1
+		echo "Can't write to $i, skipping."
 	fi
 done
 
@@ -299,13 +305,6 @@ then
 	echo 'Make sure you have a 3-wire fan connected.'
 	echo 'You may also need to increase the fan divisors.'
 	echo 'See doc/fan-divisors for more information.'
-	exit 1
-fi
-
-if [ "$NOTROOT" = "1" ]
-then
-	echo 'As you are not root, we cannot write the PWM settings.'
-	echo 'Please run as root to continue.'
 	exit 1
 fi
 
@@ -540,6 +539,57 @@ then
 	exit 1
 fi
 
+function DevicePath()
+{
+	if [ -h "$1/device" ]
+	then
+		readlink -f "$1/device" | sed -e 's/^\/sys\///'
+	fi
+}
+
+function DeviceName()
+{
+	if [ -r "$1/name" ]
+	then
+		cat "$1/name" | sed -e 's/[[:space:]=]/_/g'
+	elif [ -r "$1/device/name" ]
+	then
+		cat "$1/device/name" | sed -e 's/[[:space:]=]/_/g'
+	fi
+}
+
+function ValidateDevices()
+{
+	local OLD_DEVPATH="$1" OLD_DEVNAME="$2" outdated=0
+	local entry device name path
+
+	for entry in $OLD_DEVPATH
+	do
+		device=`echo "$entry" | sed -e 's/=[^=]*$//'`
+		path=`echo "$entry" | sed -e 's/^[^=]*=//'`
+
+		if [ "`DevicePath "$device"`" != "$path" ]
+		then
+			echo "Device path of $device has changed"
+			outdated=1
+		fi
+	done
+
+	for entry in $OLD_DEVNAME
+	do
+		device=`echo "$entry" | sed -e 's/=[^=]*$//'`
+		name=`echo "$entry" | sed -e 's/^[^=]*=//'`
+
+		if [ "`DeviceName "$device"`" != "$name" ]
+		then
+			echo "Device name of $device has changed"
+			outdated=1
+		fi
+	done
+
+	return $outdated
+}
+
 function AskPath()
 {
 	echo -n 'What should be the path to your fancontrol config file (/etc/fancontrol)? '
@@ -567,6 +617,8 @@ function ClearConfig()
 
 function LoadConfig()
 {
+	local OLD_DEVPATH OLD_DEVNAME
+
 	# Nothing to do
 	if [ ! -f "$1" ]
 	then
@@ -576,6 +628,8 @@ function LoadConfig()
 
 	echo "Loading configuration from $1 ..."
 	INTERVAL=`egrep '^INTERVAL=.*$' $1 | sed -e 's/INTERVAL= *//g'`
+	OLD_DEVPATH=`egrep '^DEVPATH=.*$' $1 | sed -e 's/DEVPATH= *//g'`
+	OLD_DEVNAME=`egrep '^DEVNAME=.*$' $1 | sed -e 's/DEVNAME= *//g'`
 	FCTEMPS=`egrep '^FCTEMPS=.*$' $1 | sed -e 's/FCTEMPS= *//g'`
 	FCFANS=`egrep '^FCFANS=.*$' $1 | sed -e 's/FCFANS= *//g'`
 	MINTEMP=`egrep '^MINTEMP=.*$' $1 | sed -e 's/MINTEMP= *//g'`
@@ -586,16 +640,12 @@ function LoadConfig()
 	MAXPWM=`egrep '^MAXPWM=.*$' $1 | sed -e 's/MAXPWM= *//g'`
 
 	# Check for configuration change
-	local item
-	for item in $FCFANS
-	do
-		if [ ! -f "`echo $item | sed -e 's/=.*$//'`" ]
-		then
-			echo "Configuration appears to be outdated, discarded"
-			ClearConfig
-			return 0
-		fi
-	done
+	if ! ValidateDevices "$OLD_DEVPATH" "$OLD_DEVNAME"
+	then
+		echo "Configuration appears to be outdated, discarded"
+		ClearConfig
+		return 0
+	fi
 }
 
 LoadConfig $FCCONFIG
@@ -676,14 +726,74 @@ function TestMinStop()
 	echo "OK, using $fanval"
 }
 
+# Remember the path and name of each device with at least one
+# reference (pwm, temp or fan) in the configuration file.
+# This function sets globals DEVPATH and DEVNAME as a side effect.
+function RememberDevices()
+{
+	local used entry device name path tempfandev pwmdev
+	DEVPATH=""
+	DEVNAME=""
+
+	for device in $DEVICES
+	do
+		device=`echo "$device" | sed -e 's/\/.*$//'`
+
+		used=0
+		for entry in $1 $2
+		do
+			pwmdev=`echo "$entry" | sed -e 's/\/.*$//'`
+			tempfandev=`echo "$entry" | sed -e 's/^[^=]*=//' -e 's/\/.*$//'`
+
+			if [ "$device" = "$pwmdev" -o "$device" = "$tempfandev" ]
+			then
+				used=1
+			fi
+		done
+		if [ "$used" -eq 0 ]
+		then
+			continue
+		fi
+
+		# Record the device path and name. This lets the fancontrol
+		# script check that they didn't change. If they did, then the
+		# configuration file can no longer be trusted.
+		path=`DevicePath "$device"`
+		if [ -z "$DEVPATH" ]
+		then
+			DEVPATH="$device=$path"
+		else
+			DEVPATH="$DEVPATH $device=$path"
+		fi
+
+		name=`DeviceName "$device"`
+		if [ -z "$DEVNAME" ]
+		then
+			DEVNAME="$device=$name"
+		else
+			DEVNAME="$DEVNAME $device=$name"
+		fi
+	done
+}
+
 function SaveConfig()
 {
+	RememberDevices "$FCTEMPS" "$FCFANS"
+
 	echo
 	echo "Saving configuration to $FCCONFIG..."
 	tmpfile=`mktemp -t pwmcfg.XXXXXXXXXX` || { echo "$0: Cannot create temporary file" >&2; exit 1;  }
 	trap " [ -f \"$tmpfile\" ] && /bin/rm -f -- \"$tmpfile\"" 0 1 2 3 13 15
 	echo "# Configuration file generated by pwmconfig, changes will be lost" >$tmpfile
-	echo -e "INTERVAL=$INTERVAL\nFCTEMPS=$FCTEMPS\nFCFANS=$FCFANS\nMINTEMP=$MINTEMP\nMAXTEMP=$MAXTEMP\nMINSTART=$MINSTART\nMINSTOP=$MINSTOP" >>$tmpfile
+	echo "INTERVAL=$INTERVAL" >>$tmpfile
+	echo "DEVPATH=$DEVPATH" >>$tmpfile
+	echo "DEVNAME=$DEVNAME" >>$tmpfile
+	echo "FCTEMPS=$FCTEMPS" >>$tmpfile
+	echo "FCFANS=$FCFANS" >>$tmpfile
+	echo "MINTEMP=$MINTEMP" >>$tmpfile
+	echo "MAXTEMP=$MAXTEMP" >>$tmpfile
+	echo "MINSTART=$MINSTART" >>$tmpfile
+	echo "MINSTOP=$MINSTOP" >>$tmpfile
 	[ -n "$MINPWM" ] && echo "MINPWM=$MINPWM" >>$tmpfile
 	[ -n "$MAXPWM" ] && echo "MAXPWM=$MAXPWM" >>$tmpfile
 	mv $tmpfile $FCCONFIG

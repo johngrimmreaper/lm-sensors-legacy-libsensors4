@@ -168,7 +168,7 @@ char *sensors_get_label(const sensors_chip_name *name,
 {
 	char *label;
 	const sensors_chip *chip;
-	char buf[128], path[PATH_MAX];
+	char buf[PATH_MAX];
 	FILE *f;
 	int i;
 
@@ -178,28 +178,29 @@ char *sensors_get_label(const sensors_chip_name *name,
 	for (chip = NULL; (chip = sensors_for_all_config_chips(name, chip));)
 		for (i = 0; i < chip->labels_count; i++)
 			if (!strcmp(feature->name, chip->labels[i].name)) {
-				label = strdup(chip->labels[i].value);
+				label = chip->labels[i].value;
 				goto sensors_get_label_exit;
 			}
 
 	/* No user specified label, check for a _label sysfs file */
-	snprintf(path, PATH_MAX, "%s/%s_label", name->path, feature->name);
+	snprintf(buf, PATH_MAX, "%s/%s_label", name->path, feature->name);
 	
-	if ((f = fopen(path, "r"))) {
-		i = fread(buf, 1, sizeof(buf) - 1, f);
+	if ((f = fopen(buf, "r"))) {
+		i = fread(buf, 1, sizeof(buf), f);
 		fclose(f);
 		if (i > 0) {
 			/* i - 1 to strip the '\n' at the end */
 			buf[i - 1] = 0;
-			label = strdup(buf);
+			label = buf;
 			goto sensors_get_label_exit;
 		}
 	}
 
 	/* No label, return the feature name instead */
-	label = strdup(feature->name);
+	label = feature->name;
 	
 sensors_get_label_exit:
+	label = strdup(label);
 	if (!label)
 		sensors_fatal_error(__func__, "Allocating label text");
 	return label;
@@ -362,6 +363,10 @@ const char *sensors_get_adapter_name(const sensors_bus_id *bus)
 		return "Virtual device";
 	case SENSORS_BUS_TYPE_ACPI:
 		return "ACPI interface";
+	/* HID should probably not be there either, but I don't know if
+	   HID buses have a name nor where to find it. */
+	case SENSORS_BUS_TYPE_HID:
+		return "HID adapter";
 	}
 
 	/* bus types with several instances */

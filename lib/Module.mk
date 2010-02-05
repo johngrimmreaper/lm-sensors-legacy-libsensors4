@@ -33,7 +33,7 @@ LIBMAN5FILES := $(MODULE_DIR)/sensors.conf.5
 # changed in a backward incompatible way.  The interface is defined by
 # the public header files - in this case they are error.h and sensors.h.
 LIBMAINVER := 4
-LIBMINORVER := 2.0
+LIBMINORVER := 2.1
 LIBVER := $(LIBMAINVER).$(LIBMINORVER)
 
 # The static lib name, the shared lib name, and the internal ('so') name of
@@ -156,6 +156,7 @@ endif
 	$(INSTALL) -m 644 $(LIBHEADERFILES) $(DESTDIR)$(LIBINCLUDEDIR)
 	$(INSTALL) -m 644 $(LIBMAN3FILES) $(DESTDIR)$(LIBMAN3DIR)
 	$(INSTALL) -m 644 $(LIBMAN5FILES) $(DESTDIR)$(LIBMAN5DIR)
+	$(LN) sensors.conf.5 $(DESTDIR)$(LIBMAN5DIR)/sensors3.conf.5
 
 
 user_install :: install-lib

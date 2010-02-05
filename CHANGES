@@ -1,6 +1,50 @@
 lm-sensors CHANGES file
 -----------------------
 
+3.1.2 (2010-02-02)
+  libsensors: Support upcoming sysfs path to i2c adapters
+              Add support for HID devices
+  fancontrol: Check that all referenced sysfs files exist
+              Check that all devices match the configuration file
+  pwmconfig: Exit immediately if not root
+             Save device paths and names in configuration file
+  sensors.conf.default: Encourage user to not modify this file
+                        Add a section for adt7473 and adt7475
+                        Add a section for adt7476 and adt7490
+  sensord: Don't name our variables "alarm"
+  	   Major refactoring including
+	   - Cleanup of huge functions
+	   - Remove needless casts
+	   - Fix coding style
+	   - Break long lines
+	   - Make functions more robust
+	   - Remove unused return value
+	   - Make CGI script more XHTML compatible
+  sensors: Fix iconv-related build warning in set_degstr
+  sensors-detect: Refer to tmp401 driver if TMP411 is detected
+                  Clean up the discovery of i2c adapters
+                  Report unsupported Access Bus adapters
+                  Add detection for TI's TMP421, TMP422 and TMP423 chips
+                  The SMSC LPC47M233 isn't currently supported
+                  Support upcoming sysfs path to i2c adapters
+                  Rename the modprobe configuration file to lm_sensors.conf
+                  Only report AMD Family 10h CPU with working sensors
+                  Add detection for AMD Family 11h thermal sensors
+                  Add detection for Intel Atom thermal sensors
+                  Add detection for National Semiconductor LM73
+                  Add SMBus detection for AMD Hudson-2
+                  Add detection for Nuvoton W83667HG-B and W83677HG-I
+                  Add detection for Analog Devices ADT7490
+                  Refer to f71882fg driver if F71889FG is detected
+                  Add detecton for Fintek F71869FG
+                  Detect ADT7473 at 0x2c and 0x2d
+                  More known revisions for the ADT7476
+                  Add detection for Nuvoton W83L771AWG/ASG
+                  Add detection for VIA Nano
+                  Add detection for Texas Instruments AMC6821
+                  Add detection for Analog Devices ADT7411
+  sysconfig-lm_sensors-convert: Fix exit code
+
 3.1.1 (2009-06-21)
   isadump: Use geteuid instead of getuid so that setuid bit works
   isaset: Use geteuid instead of getuid so that setuid bit works
@@ -40,6 +84,7 @@ lm-sensors CHANGES file
               Free bus statements from the configuration file sooner
               Read extra configuration files from /etc/sensors.d (#2174)
               Report the configuration file name on parse errors
+              Add support for ACPI devices
   libsensors.3: Reformat for clarity
                 Document function sensors_snprintf_chip_name
                 Document error-related functions

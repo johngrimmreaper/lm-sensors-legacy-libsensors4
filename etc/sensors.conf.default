@@ -5,7 +5,11 @@
 # differ from one mainboard to the next. Only label, compute and set
 # statements for internal voltage and temperature sensors are included.
 #
-# Better configuration files for specific mainboards can be found at
+# In general, local changes should not be added to this file, but rather
+# placed in custom configuration files located in /etc/sensors.d. This
+# approach makes further updates much easier.
+#
+# Such custom configuration files for specific mainboards can be found at
 # http://www.lm-sensors.org/wiki/Configurations
 
 chip "lm78-*" "lm79-*" "lm80-*"
@@ -107,6 +111,7 @@ chip "it87-*" "it8712-*" "it8716-*" "it8718-*" "it8720-*"
 
 
 chip "fscpos-*" "fscher-*"
+#FSC "Hermes"
 
     label in0 "+12V"
     label in1 "+5V"
@@ -118,6 +123,7 @@ chip "fscpos-*" "fscher-*"
 
 
 chip "fscscy-*"
+#FSC "Scylla"
 
     label in0 "+12V"
     label in1 "+5V"
@@ -128,6 +134,48 @@ chip "fscscy-*"
     label temp3 "M/B Temp"
     label temp4 "Aux Temp"
 
+
+chip "fschds-*"
+# Fujitsu Technology Solutions, "Hades"-Chip
+
+# Temperatures
+    label temp1 "CPU Temp"
+    label temp2 "Super I/O Temp"
+    label temp3 "System Temp"
+
+# Fans
+    label fan1 "PSU Fan"
+    label fan2 "CPU Fan"
+    label fan3 "System FAN2"
+    label fan4 "System FAN3"
+    label fan5 "System FAN4"
+
+# Voltages
+    label in0 "+12V"
+    label in1 "+5V"
+    label in2 "Vbat"
+
+chip "fscsyl-*"
+# Fujitsu Technology Solutions, "Syleus"-Chip
+
+# Temperatures
+    label temp1 "CPU Temp"
+    label temp4 "Super I/O Temp"
+    label temp5 "Northbridge Temp"
+
+# Fans
+    label fan1 "CPU Fan"
+    label fan2 "System FAN2"
+    label fan3 "System FAN3"
+    label fan4 "System FAN4"
+    label fan7 "PSU Fan"
+
+# Voltages
+    label in0 "+12V"
+    label in1 "+5V"
+    label in2 "Vbat"
+    label in3 "+3.3V"
+    label in5 "+3.3V-Aux"
 
 chip "vt1211-*"
 
@@ -355,3 +403,32 @@ chip "f8000-*"
     compute in0  @*2, @/2
     compute in1  @*2, @/2
     compute in2  @*2, @/2
+
+
+chip "adt7473-*" "adt7475-*"
+
+    label in2 "+3.3V"
+
+    set in2_min  3.3 * 0.90
+    set in2_max  3.3 * 1.10
+
+    label temp2 "Board Temp"
+
+
+chip "adt7476-*" "adt7490-*"
+
+    label in1 "Vcore"
+    label in2 "+3.3V"
+    label in3 "+5V"
+    label in4 "+12V"
+
+    set in2_min  3.3 * 0.90
+    set in2_max  3.3 * 1.10
+    set in3_min  5.0 * 0.90
+    set in3_max  5.0 * 1.10
+# Depending on how your ADT7476 is hardwired, you may or may not have
+# +12V readings.
+#    set in4_min 12.0 * 0.90
+#    set in4_max 12.0 * 1.10
+
+    label temp2 "M/B Temp"
