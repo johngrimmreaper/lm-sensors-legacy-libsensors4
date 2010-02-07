@@ -25,10 +25,13 @@ test -x $DAEMON || exit 0
 case "$1" in
   start)
   	if [ -f $CONF ] && [ -n "`grep INTERVAL $CONF | cut -d= -f2`" ]; then
-		log_daemon_msg "Starting $DESC" "$NAME"
-
-		start-stop-daemon --start --quiet --background --pidfile $PIDFILE --startas $DAEMON
-		log_end_msg $?
+		if [ -n "`grep DEVPATH $CONF | cut -d= -f2`" ] && [ -n "`grep DEVNAME $CONF | cut -d= -f2`" ] ; then
+			log_daemon_msg "Starting $DESC" "$NAME"
+			start-stop-daemon --start --quiet --background --pidfile $PIDFILE --startas $DAEMON
+			log_end_msg $?
+		else
+			log_failure_msg "Not starting fancontrol, outdated configuration file; please re-run pwmconfig."
+		fi
 	else
 		if [ "$VERBOSE" != no ]; then
 			log_warning_msg "Not starting fancontrol; run pwmconfig first."

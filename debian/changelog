@@ -1,3 +1,9 @@
+lm-sensors-3 (1:3.1.2-2) unstable; urgency=low
+
+  * Detect old configuration files in init script (closes: bug#568627).
+
+ -- Aurelien Jarno <aurel32@debian.org>  Sun, 07 Feb 2010 21:12:44 +0100
+
 lm-sensors-3 (1:3.1.2-1) unstable; urgency=low
 
   * New upstream version. 
@@ -15,7 +21,7 @@ lm-sensors-3 (1:3.1.1-6) unstable; urgency=low
 
 lm-sensors-3 (1:3.1.1-5) unstable; urgency=low
 
-  * Split-out fancontro in a separate package (closes: bug#540677).
+  * Split-out fancontrol in a separate package (closes: bug#540677).
   * Restart fancontrol in postinst instead of starting it (closes: 
     bug#552197).
   * Don't stop fancontrol in runlevel 0 1 6 (closes: bug#563835).
