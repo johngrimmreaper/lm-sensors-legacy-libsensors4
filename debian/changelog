@@ -1,3 +1,13 @@
+lm-sensors-3 (1:3.1.2-3) unstable; urgency=medium
+
+  * Add 09-sensord-multiple-chips.diff from upstream to fix multiple
+    chip support in sensord (closes: bug#581036).
+  * Fix error message in lm-sensors init script (closes: bug#581350).
+  * Remove /etc/rc1.d/K20sensord on upgrade (closes: bug#573898). 
+  * Fix typos in pwmconfig (closes: bug#570344).
+
+ -- Aurelien Jarno <aurel32@debian.org>  Mon, 24 May 2010 23:11:32 +0200
+
 lm-sensors-3 (1:3.1.2-2) unstable; urgency=low
 
   * Detect old configuration files in init script (closes: bug#568627).

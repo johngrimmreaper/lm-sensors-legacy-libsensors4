@@ -39,7 +39,7 @@ case "$1" in
 	exit 0
 	;;
   *)
-	log_success_msg "Usage: /etc/init.d/sensors {start|stop|restart|force-reload|status}"
+	log_success_msg "Usage: /etc/init.d/lm-sensors {start|stop|restart|force-reload|status}"
 	exit 1
 esac
 
