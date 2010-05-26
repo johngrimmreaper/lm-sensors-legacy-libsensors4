@@ -4,7 +4,7 @@
  	return $outdated
  }
  
-+if [ "$1" == "--verify" ]
++if [ "$1" == "--check" ]
 +then
 +	if [ -f "$2" ]
 +	then
