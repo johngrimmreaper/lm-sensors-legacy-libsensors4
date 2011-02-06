@@ -1,15 +1,15 @@
 #  Module.mk - Makefile for a Linux module for reading sensor data.
 #  Copyright (c) 1998, 1999  Frodo Looijaard <frodol@dds.nl>
 #
-#  This program is free software; you can redistribute it and/or modify
-#  it under the terms of the GNU General Public License as published by
-#  the Free Software Foundation; either version 2 of the License, or
-#  (at your option) any later version.
+#  This library is free software; you can redistribute it and/or
+#  modify it under the terms of the GNU Lesser General Public
+#  License as published by the Free Software Foundation; either
+#  version 2.1 of the License, or (at your option) any later version.
 #
-#  This program is distributed in the hope that it will be useful,
+#  This library is distributed in the hope that it will be useful,
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
+#  GNU Lesser General Public License for more details.
 #
 #  You should have received a copy of the GNU General Public License
 #  along with this program; if not, write to the Free Software
@@ -33,7 +33,7 @@ LIBMAN5FILES := $(MODULE_DIR)/sensors.conf.5
 # changed in a backward incompatible way.  The interface is defined by
 # the public header files - in this case they are error.h and sensors.h.
 LIBMAINVER := 4
-LIBMINORVER := 2.1
+LIBMINORVER := 3.0
 LIBVER := $(LIBMAINVER).$(LIBMINORVER)
 
 # The static lib name, the shared lib name, and the internal ('so') name of
