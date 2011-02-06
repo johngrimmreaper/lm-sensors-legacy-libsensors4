@@ -4,9 +4,7 @@
 
 #export DH_VERBOSE=1
 
-include /usr/share/quilt/quilt.make
-
-clean: unpatch
+clean:
 	dh_testdir
 	dh_testroot
 	
@@ -19,7 +17,7 @@ clean: unpatch
 # Build everything that goes into the Debian package.  Use recursive make
 # invocations to build all of the interesting components.
 build: build-stamp
-build-stamp: $(QUILT_STAMPFN)
+build-stamp:
 	dh_testdir
 
 	# binary programs and librairies

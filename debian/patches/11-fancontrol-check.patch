@@ -1,3 +1,7 @@
+---
+ prog/pwm/fancontrol |   11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
 --- a/prog/pwm/fancontrol
 +++ b/prog/pwm/fancontrol
 @@ -256,6 +256,17 @@

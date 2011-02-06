@@ -1,6 +1,31 @@
 lm-sensors CHANGES file
 -----------------------
 
+3.2.0 (2010-10-10)
+  libsensors: Increase MAX_SENSORS_PER_TYPE to 24
+              Map individual beep features
+              Change license to LGPL
+  pwmconfig: Sample all fan speeds before returning to full speed (#2380)
+             Wait for fans to return to full speed only once per PWM
+             Drop legacy invocations of cut
+  sensors.conf.default: W83667HG config is similar to W83627EHF/DHG
+  sensord: Fix support of multiple chips (#2377)
+  sensors: Properly handle sensor input read errors
+  sensors-detect: Give udev time to settle before accessing i2c nodes
+                  Add support for Intel PCH (SMBus)
+                  Add support for SMSC EMC1403 and EMC1404
+                  Fix detection of RB-C3 AMD Family 10h CPU
+                  Add support for SMSC EMC2103
+                  Add support for Fintek F71889ED
+                  Add support for ITE IT8721F
+                  Fix Maxim MAX6690 support
+                  Fix handling of duplicate detections
+                  Add support for STMicroelectronics STTS424
+                  Add support for NXP SE97 / SE97B
+                  Add reference to NCT6771F/NCT6772F/NCT6775F
+                  Add support for several JC42.4 compliant temperature sensors
+                  Add support for ITE IT8512E/F and IT8758E
+
 3.1.2 (2010-02-02)
   libsensors: Support upcoming sysfs path to i2c adapters
               Add support for HID devices

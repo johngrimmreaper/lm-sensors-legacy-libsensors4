@@ -6,6 +6,7 @@
 06-sensors-detect-debian.patch
 07-sensors3.conf-local-changes.patch
 08-sensors-detect-lm85.patch
-09-sensord-multiple-chips.diff
+09-sensors-detect-sch5524.patch
 10-pwmconfig.diff
 11-fancontrol-check.patch
+12-upstream-patches.patch

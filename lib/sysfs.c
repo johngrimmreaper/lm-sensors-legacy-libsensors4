@@ -3,15 +3,15 @@
     Copyright (c) 2005 Mark M. Hoffman <mhoffman@lightlink.com>
     Copyright (C) 2007-2008 Jean Delvare <khali@linux-fr.org>
 
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
+    This library is free software; you can redistribute it and/or
+    modify it under the terms of the GNU Lesser General Public
+    License as published by the Free Software Foundation; either
+    version 2.1 of the License, or (at your option) any later version.
 
-    This program is distributed in the hope that it will be useful,
+    This library is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+    GNU Lesser General Public License for more details.
 
     You should have received a copy of the GNU General Public License
     along with this program; if not, write to the Free Software
@@ -136,11 +136,11 @@ static int sysfs_foreach_busdev(const char *bus_type,
 
 char sensors_sysfs_mount[NAME_MAX];
 
-#define MAX_SENSORS_PER_TYPE	20
+#define MAX_SENSORS_PER_TYPE	24
 #define MAX_SUBFEATURES		8
 #define MAX_SENSOR_TYPES	6
-/* Room for all 5 types (in, fan, temp, power, energy) with all their
-   subfeatures + VID + misc features */
+/* Room for all 6 types (in, fan, temp, power, energy, current) with all
+   their subfeatures + VID + misc features */
 #define ALL_POSSIBLE_SUBFEATURES \
 				(MAX_SENSORS_PER_TYPE * MAX_SUBFEATURES * \
 				 MAX_SENSOR_TYPES * 2 + \
@@ -228,6 +228,7 @@ static const struct subfeature_type_match temp_matches[] = {
 	{ "fault", SENSORS_SUBFEATURE_TEMP_FAULT },
 	{ "type", SENSORS_SUBFEATURE_TEMP_TYPE },
 	{ "offset", SENSORS_SUBFEATURE_TEMP_OFFSET },
+	{ "beep", SENSORS_SUBFEATURE_TEMP_BEEP },
 	{ NULL, 0 }
 };
 
@@ -238,6 +239,7 @@ static const struct subfeature_type_match in_matches[] = {
 	{ "alarm", SENSORS_SUBFEATURE_IN_ALARM },
 	{ "min_alarm", SENSORS_SUBFEATURE_IN_MIN_ALARM },
 	{ "max_alarm", SENSORS_SUBFEATURE_IN_MAX_ALARM },
+	{ "beep", SENSORS_SUBFEATURE_IN_BEEP },
 	{ NULL, 0 }
 };
 
@@ -247,6 +249,7 @@ static const struct subfeature_type_match fan_matches[] = {
 	{ "div", SENSORS_SUBFEATURE_FAN_DIV },
 	{ "alarm", SENSORS_SUBFEATURE_FAN_ALARM },
 	{ "fault", SENSORS_SUBFEATURE_FAN_FAULT },
+	{ "beep", SENSORS_SUBFEATURE_FAN_BEEP },
 	{ NULL, 0 }
 };
 
@@ -273,6 +276,7 @@ static const struct subfeature_type_match curr_matches[] = {
 	{ "alarm", SENSORS_SUBFEATURE_CURR_ALARM },
 	{ "min_alarm", SENSORS_SUBFEATURE_CURR_MIN_ALARM },
 	{ "max_alarm", SENSORS_SUBFEATURE_CURR_MAX_ALARM },
+	{ "beep", SENSORS_SUBFEATURE_CURR_BEEP },
 	{ NULL, 0 }
 };
 

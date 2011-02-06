@@ -29,8 +29,8 @@
 #
 #
 
-REVISION=$(echo '$Revision: 5770 $' | cut -d' ' -f2)
-REVDATE=$(echo '$Date: 2009-09-16 17:57:53 +0200 (mer. 16 sept. 2009) $' | cut -d' ' -f2)
+REVISION=$(echo '$Revision: 5857 $' | cut -d' ' -f2)
+REVDATE=$(echo '$Date: 2010-08-22 18:17:57 +0200 (dim. 22 août 2010) $' | cut -d' ' -f2)
 PIDFILE="/var/run/fancontrol.pid"
 
 if [ -f "$PIDFILE" ]
@@ -280,8 +280,7 @@ sleep $DELAY
 echo 'Found the following fan sensors:'
 for i in $FAN
 do
-	# this will return the first field if there's only one (sysfs)
-	S=`cat $i | cut -d' ' -f2`
+	S=`cat $i`
 	if [ "$S" = "0" -o "$S" = "-1" ]
 	then
 		echo "   $i     current speed: 0 ... skipping!"
@@ -373,8 +372,7 @@ function pwmdetail()
 			rm -f $TMP1 $TMP2
 			exit 1
 		fi
-		# this will return the first field if there's only one (sysfs)
-		S=`cat $F | cut -d' ' -f2`
+		S=`cat $F`
 		# Fan speed should never increase significantly
 		if [ $S -gt $threshold ]
 		then
@@ -437,15 +435,19 @@ do
 		echo '^C received, restoring PWM and aborting...'
 		exit 1
 	fi
+
+	# Sample all current fan speeds at once, so that we can quickly
+	# disable PWM and return all fans to full speed
+	CURRENT_SPEEDS="`cat $GOODFAN`"
+	pwmdisable $i
+
 	let pwmactivecount=0
 	let count=1
 	for j in $GOODFAN
 	do
 		OS=`echo $SPEEDS | cut -d' ' -f$count`
-		# this will return the first field if there's only one (sysfs)
-		S=`cat $j | cut -d' ' -f2`
+		S=`echo $CURRENT_SPEEDS | cut -d' ' -f$count`
 		echo "  $j ... speed was $OS now $S"
-		pwmdisable $i
 		let threshold=2*$OS/3
 		if [ $S -lt $threshold ]
 		then
@@ -460,18 +462,19 @@ do
 				pwmactive="$i ${pwmactive}"
 				fanactive="$j ${fanactive}"
 				fanactive_min="$S ${fanactive_min}"
+
+				# Give all correlated fans time to return to full speed
+				sleep $DELAY
+				if [ $? -ne 0 ]
+				then
+					echo '^C received, aborting...'
+					exit 1
+				fi
 			else
 				fanactive="$j+${fanactive}" #not supported yet by fancontrol
 				fanactive_min="$S+${fanactive_min}"
 			fi
-			sleep $DELAY
-			if [ $? -ne 0 ]
-			then
-				echo '^C received, aborting...'
-				exit 1
-			fi
-			# this will return the first field if there's only one (sysfs)
-			S=`cat $j | cut -d' ' -f2`
+			S=`cat $j`
 			if [ $S -lt $threshold ]
 			then
 				echo "    Fan $j has not returned to speed, please investigate!"
@@ -695,7 +698,7 @@ function TestMinStop()
 	do
 		pwmset $pwms $fanval
 		sleep $PDELAY
-		fanspeed=`cat $faninput | cut -d' ' -f2`
+		fanspeed=`cat $faninput`
 		if [ $fanspeed -gt $threshold ]
 		then
 			echo "    PWM $fanval -> $fanspeed RPM (probably incorrect)"

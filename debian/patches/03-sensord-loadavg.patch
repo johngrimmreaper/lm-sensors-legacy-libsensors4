@@ -15,7 +15,7 @@
  
 --- a/prog/sensord/rrd.c
 +++ b/prog/sensord/rrd.c
-@@ -235,6 +235,10 @@
+@@ -238,6 +238,10 @@
  			min = "-100";
  			max = "250";
  			break;
@@ -26,7 +26,7 @@
  		default:
  			min = max = "U";
  			break;
-@@ -254,8 +258,11 @@
+@@ -257,8 +261,11 @@
  	int ret = 0;
  	struct ds data = { 0, argv};
  	ret = applyToFeatures(rrdGetSensors_DS, &data);
