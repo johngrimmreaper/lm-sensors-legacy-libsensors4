@@ -1,215 +1,26 @@
-Recommended patches from upstream: r5870, r5883, r5886, r5887, r5889, r5905, r5913
+Recommended patches from upstream: r5952
 
 ---
- etc/sensors.conf.default   |   35 +++++++++++++++++++++-
- lib/sensors.conf.5         |    2 -
- prog/detect/sensors-detect |   71 +++++++++++++++++++++++++++------------------
- 3 files changed, 79 insertions(+), 29 deletions(-)
+ prog/detect/sensors-detect |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
---- a/etc/sensors.conf.default
-+++ b/etc/sensors.conf.default
-@@ -270,7 +270,26 @@
-     label temp1 "M/B Temp"
- 
- 
--chip "w83627ehf-*" "w83627dhg-*" "w83667hg-*"
-+chip "w83627thf-*"
-+
-+    label in3 "+5V"
-+    label in7 "5VSB"
-+    label in8 "Vbat"
-+
-+    # Internal resistors
-+    compute in3  @ * (1 + 34/51), @ / (1 + 34/51)
-+    compute in7  @ * (1 + 34/51), @ / (1 + 34/51)
-+
-+    set in3_min  5.0 * 0.90
-+    set in3_max  5.0 * 1.10
-+    set in7_min  5.0 * 0.90
-+    set in7_max  5.0 * 1.10
-+# The battery voltage may or may not be monitored.
-+#    set in8_min  3.0 * 0.90
-+#    set in8_max  3.0 * 1.10
-+
-+
-+chip "w83627ehf-*" "w83627dhg-*" "w83667hg-*" "nct6775-*" "nct6776-*"
- 
-     label in0 "Vcore"
-     label in2 "AVCC"
-@@ -382,6 +401,20 @@
-     set in2_min  3.3 * 0.90
-     set in2_max  3.3 * 1.10
-     set in5_min  3.3 * 0.90
-+    set in5_max  3.3 * 1.10
-+    set in6_min  3.0 * 0.90
-+    set in6_max  3.0 * 1.10
-+
-+
-+chip "sch5127-*"
-+
-+    label in2 "+3.3V"
-+    label in5 "3VSB"
-+    label in6 "Vbat"
-+
-+    set in2_min  3.3 * 0.90
-+    set in2_max  3.3 * 1.10
-+    set in5_min  3.3 * 0.90
-     set in5_max  3.3 * 1.10
-     set in6_min  3.0 * 0.90
-     set in6_max  3.0 * 1.10
 --- a/prog/detect/sensors-detect
 +++ b/prog/detect/sensors-detect
-@@ -23,7 +23,7 @@
- require 5.004;
- 
- use strict;
--use Fcntl;
-+use Fcntl qw(:DEFAULT :seek);
- use File::Basename;
- 
- # We will call modprobe, which typically lives in either /sbin,
-@@ -1796,7 +1796,7 @@
+@@ -1998,7 +1998,7 @@
  		features => FEAT_IN | FEAT_FAN | FEAT_TEMP,
  	}, {
- 		name => "Nuvoton W83667HG-B Super IO Sensors",
--		driver => "to-be-written",	# Probably w83627ehf
-+		driver => "w83627ehf",
- 		devid => 0xB350,
- 		devid_mask => 0xFFF0,
- 		logdev => 0x0b,
-@@ -2030,13 +2030,9 @@
- 		driver => "k10temp",
- 		detect => \&fam11h_pci_detect,
+ 		name => "Fintek F71889A Super IO Sensors",
+-		driver => "to-be-written",
++		driver => "f71882fg",
+ 		devid => 0x1005,
+ 		logdev => 0x04,
+ 		features => FEAT_IN | FEAT_FAN | FEAT_TEMP,
+@@ -2012,7 +2012,7 @@
+ 		devid => 0x0206,
  	}, {
--		name => "Intel Core family thermal sensor",
-+		name => "Intel digital thermal sensor",
- 		driver => "coretemp",
--		detect => sub { coretemp_detect(0); },
--	}, {
--		name => "Intel Atom thermal sensor",
--		driver => "coretemp",
--		detect => sub { coretemp_detect(1); },
-+		detect => \&coretemp_detect,
- 	}, {
- 		name => "Intel AMB FB-DIMM thermal sensor",
- 		driver => "i5k_amb",
-@@ -2298,10 +2294,10 @@
- 	while (<INPUTFILE>) {
- 		if (m/^processor\s*:\s*(\d+)/) {
- 			push @cpu, $entry if scalar keys(%{$entry}); # Previous entry
--			$entry = {}; # New entry
-+			$entry = { nr => $1 }; # New entry
- 			next;
- 		}
--		if (m/^(vendor_id|cpu family|model|model name|stepping)\s*:\s*(.+)$/) {
-+		if (m/^(vendor_id|cpu family|model|model name|stepping|cpuid level)\s*:\s*(.+)$/) {
- 			my $k = $1;
- 			my $v = $2;
- 			$v =~ s/\s+/ /g;	# Merge multiple spaces
-@@ -2470,6 +2466,15 @@
- 	$modules_list{$normalized} = 1;
- }
- 
-+# udev may take some time to create device nodes when loading modules
-+sub udev_settle
-+{
-+	if (!(-x "/sbin/udevadm" && system("/sbin/udevadm settle") == 0)
-+	 && !(-x "/sbin/udevsettle" && system("/sbin/udevsettle") == 0)) {
-+		sleep(1);
-+	}
-+}
-+
- sub initialize_modules_supported
- {
- 	foreach my $chip (@chip_ids) {
-@@ -5759,23 +5764,33 @@
- 	return;
- }
- 
-+sub cpuid
-+{
-+	my ($cpu_nr, $eax) = @_;
-+
-+	sysopen(CPUID, "/dev/cpu/$cpu_nr/cpuid", O_RDONLY) or return;
-+	binmode CPUID;
-+	sysseek(CPUID, $eax, SEEK_SET)
-+		or die "Cannot seek /dev/cpu/$cpu_nr/cpuid";
-+	sysread(CPUID, my $data, 16)
-+		or die "Cannot read /dev/cpu/$cpu_nr/cpuid";
-+	close CPUID;
-+
-+	return unpack("L4", $data);
-+}
-+
- sub coretemp_detect
- {
--	my $chip = shift;
- 	my $probecpu;
- 
- 	foreach $probecpu (@cpu) {
- 		next unless $probecpu->{vendor_id} eq 'GenuineIntel' &&
--			    $probecpu->{'cpu family'} == 6;
--		return 9 if $chip == 0 &&
--			($probecpu->{model} == 14 ||	# Pentium M DC
--			 $probecpu->{model} == 15 ||	# Core 2 DC 65nm
--			 $probecpu->{model} == 0x16 ||	# Core 2 SC 65nm
--			 $probecpu->{model} == 0x17 ||	# Penryn 45nm
--			 $probecpu->{model} == 0x1a ||	# Nehalem
--			 $probecpu->{model} == 0x1e);	# Lynnfield
--		return 9 if $chip == 1 &&
--			($probecpu->{model} == 0x1c);	# Atom
-+			    $probecpu->{'cpuid level'} >= 6;
-+
-+		# Now we check for the DTS flag
-+		my @regs = cpuid($probecpu->{nr}, 6);
-+		return unless @regs == 4;
-+		return 9 if ($regs[0] & (1 << 0));	# eax, bit 0
- 	}
- 	return;
- }
-@@ -5935,6 +5950,7 @@
- 	# the adapter drivers so that the numbers will be the same. If not, then
- 	# we only load the adapter drivers which are useful.
- 	foreach $adap (@i2c_adapters) {
-+		next unless defined $adap;
- 		next if $adap->{autoload};
- 		next if $adap->{driver} eq 'UNKNOWN';
- 		next if not defined $configfile and not $adap->{used};
-@@ -6084,6 +6100,12 @@
- 	print "Some south bridges, CPUs or memory controllers contain embedded sensors.\n".
- 	      "Do you want to scan for them? This is totally safe. (YES/no): ";
- 	unless (<STDIN> =~ /^\s*n/i) {
-+		# Load the cpuid driver if needed
-+		unless (-e "/dev/cpu/$cpu[0]->{nr}/cpuid") {
-+			load_module("cpuid");
-+			udev_settle();
-+		}
-+
- 		$| = 1;
- 		foreach my $entry (@cpu_ids) {
- 			scan_cpu($entry);
-@@ -6159,12 +6181,7 @@
- 		$by_default = 1 if dmi_match('board_vendor', 'asustek', 'tyan',
- 					     'supermicro');
- 
--		# udev may take some time to create the device node
--		if (!(-x "/sbin/udevadm" && system("/sbin/udevadm settle") == 0)
--		 && !(-x "/sbin/udevsettle" && system("/sbin/udevsettle") == 0)) {
--			sleep(1);
--		}
--
-+		udev_settle();
- 		for (my $dev_nr = 0; $dev_nr < @i2c_adapters; $dev_nr++) {
- 			next unless exists $i2c_adapters[$dev_nr];
- 			scan_i2c_adapter($dev_nr, $by_default);
---- a/lib/sensors.conf.5
-+++ b/lib/sensors.conf.5
-@@ -402,7 +402,7 @@
- again immediately.
- 
- So, in addition to tempX_max, many chips have a tempX_max_hyst
--sub-feature. Likewise, tempX_crit often comes with tempX_max_crit.
-+sub-feature. Likewise, tempX_crit often comes with tempX_crit_hyst.
- Example:
- 
- .RS
+ 		name => "Fintek F81865F Super IO Sensors",
+-		driver => "to-be-written",
++		driver => "f71882fg",
+ 		devid => 0x0704,
+ 		logdev => 0x04,
+ 		features => FEAT_IN | FEAT_FAN | FEAT_TEMP,
