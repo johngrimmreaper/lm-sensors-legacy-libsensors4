@@ -1,6 +1,44 @@
 lm-sensors CHANGES file
 -----------------------
 
+3.3.0 (2011-03-28)
+  Makefile: Check for bison and flex
+  libsensors: Add support for intrusion detection (#2370)
+              Compute MAX_SUBFEATURES at run-time (#2378)
+              Compute MAX_*_SENSOR_TYPES at build time (#2378)
+	      Add support for new sysfs attributes (#2379)
+              Add support for humidity sensors
+              Limit symbol visibility
+  sensors.conf.default: Add a section for the W83627THF
+                        Add a section for the SCH5127
+                        Add a section for the W83627UHG
+                        Add a section for the W83795G/ADG
+                        Add a section for the F81865F
+  sensors: Display 3 decimal places in raw output
+           Add support for intrusion detection (#2370)
+           Fix automatic unit selection of 0 value
+           Added support for additional sensor attributes (#2379)
+  sensors-detect: Improve LM90 and W83L771 detection
+                  Fix error seen if I2C bus numbers are not sequential
+                  Add detection of SMSC EMC1423
+                  Add detection of the Analog Devices ADT7410
+                  Add detection of the National Semiconductor LM94
+                  Add detection of the ITE IT8728F
+                  Implement universal detection for coretemp (#2381)
+                  Add detection of Maxim MAX6639
+                  Add detection of SMSC EMC1023, EMC1043, EMC1053, and EMC1063
+                  Add detection of Nuvoton NCT5571D, NCT5577D and NCT6776F
+                  Add detection of SMSC EMC1002, EMC1033, EMC1046, EMC1047,
+                        EMC1072, EMC1073, EMC1074, EMC1402, and EMC1424
+                  Fixed address ranges checked for SMSC EMC1403 and EMC1404.
+                  Fix detection of SPD EEPROM on DDR3 memory modules
+                  Add detection of AMD family 12h and 14h thermal sensors
+                  Add detection of EMC6D103S
+                  Add detection of National Semiconductor LM75A
+                  Count DMI chassis type 8 as a laptop
+                  Add detection of SMSC SCH5627
+                  Add detection of many Fintek Super-I/O devices
+
 3.2.0 (2010-10-10)
   libsensors: Increase MAX_SENSORS_PER_TYPE to 24
               Map individual beep features

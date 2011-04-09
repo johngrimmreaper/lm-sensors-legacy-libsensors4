@@ -1,7 +1,7 @@
 /*
     sysfs.c - Part of libsensors, a library for reading Linux sensor data
     Copyright (c) 2005 Mark M. Hoffman <mhoffman@lightlink.com>
-    Copyright (C) 2007-2008 Jean Delvare <khali@linux-fr.org>
+    Copyright (C) 2007-2010 Jean Delvare <khali@linux-fr.org>
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public
@@ -136,15 +136,21 @@ static int sysfs_foreach_busdev(const char *bus_type,
 
 char sensors_sysfs_mount[NAME_MAX];
 
+#define MAX_MAIN_SENSOR_TYPES	(SENSORS_FEATURE_MAX_MAIN - SENSORS_FEATURE_IN)
+#define MAX_OTHER_SENSOR_TYPES	(SENSORS_FEATURE_MAX_OTHER - SENSORS_FEATURE_VID)
 #define MAX_SENSORS_PER_TYPE	24
-#define MAX_SUBFEATURES		8
-#define MAX_SENSOR_TYPES	6
-/* Room for all 6 types (in, fan, temp, power, energy, current) with all
-   their subfeatures + VID + misc features */
-#define ALL_POSSIBLE_SUBFEATURES \
-				(MAX_SENSORS_PER_TYPE * MAX_SUBFEATURES * \
-				 MAX_SENSOR_TYPES * 2 + \
-				 MAX_SENSORS_PER_TYPE + 1)
+/* max_subfeatures is now computed dynamically */
+#define FEATURE_SIZE		(max_subfeatures * 2)
+#define FEATURE_TYPE_SIZE	(MAX_SENSORS_PER_TYPE * FEATURE_SIZE)
+
+/*
+ * Room for all 7 main types (in, fan, temp, power, energy, current, humidity)
+ * and 2 other types (VID, intrusion) with all their subfeatures + misc features
+ */
+#define SUB_OFFSET_OTHER	(MAX_MAIN_SENSOR_TYPES * FEATURE_TYPE_SIZE)
+#define SUB_OFFSET_MISC		(SUB_OFFSET_OTHER + \
+				 MAX_OTHER_SENSOR_TYPES * FEATURE_TYPE_SIZE)
+#define ALL_POSSIBLE_SUBFEATURES	(SUB_OFFSET_MISC + 1)
 
 static
 int get_type_scaling(sensors_subfeature_type type)
@@ -154,6 +160,7 @@ int get_type_scaling(sensors_subfeature_type type)
 	case SENSORS_SUBFEATURE_IN_INPUT:
 	case SENSORS_SUBFEATURE_TEMP_INPUT:
 	case SENSORS_SUBFEATURE_CURR_INPUT:
+	case SENSORS_SUBFEATURE_HUMIDITY_INPUT:
 		return 1000;
 	case SENSORS_SUBFEATURE_FAN_INPUT:
 		return 1;
@@ -186,6 +193,8 @@ char *get_feature_name(sensors_feature_type ftype, char *sfname)
 	case SENSORS_FEATURE_POWER:
 	case SENSORS_FEATURE_ENERGY:
 	case SENSORS_FEATURE_CURR:
+	case SENSORS_FEATURE_HUMIDITY:
+	case SENSORS_FEATURE_INTRUSION:
 		underscore = strchr(sfname, '_');
 		name = strndup(sfname, underscore - sfname);
 		if (!name)
@@ -221,10 +230,15 @@ static const struct subfeature_type_match temp_matches[] = {
 	{ "min", SENSORS_SUBFEATURE_TEMP_MIN },
 	{ "crit", SENSORS_SUBFEATURE_TEMP_CRIT },
 	{ "crit_hyst", SENSORS_SUBFEATURE_TEMP_CRIT_HYST },
+	{ "lcrit", SENSORS_SUBFEATURE_TEMP_LCRIT },
+	{ "emergency", SENSORS_SUBFEATURE_TEMP_EMERGENCY },
+	{ "emergency_hyst", SENSORS_SUBFEATURE_TEMP_EMERGENCY_HYST },
 	{ "alarm", SENSORS_SUBFEATURE_TEMP_ALARM },
 	{ "min_alarm", SENSORS_SUBFEATURE_TEMP_MIN_ALARM },
 	{ "max_alarm", SENSORS_SUBFEATURE_TEMP_MAX_ALARM },
 	{ "crit_alarm", SENSORS_SUBFEATURE_TEMP_CRIT_ALARM },
+	{ "emergency_alarm", SENSORS_SUBFEATURE_TEMP_EMERGENCY_ALARM },
+	{ "lcrit_alarm", SENSORS_SUBFEATURE_TEMP_LCRIT_ALARM },
 	{ "fault", SENSORS_SUBFEATURE_TEMP_FAULT },
 	{ "type", SENSORS_SUBFEATURE_TEMP_TYPE },
 	{ "offset", SENSORS_SUBFEATURE_TEMP_OFFSET },
@@ -236,9 +250,13 @@ static const struct subfeature_type_match in_matches[] = {
 	{ "input", SENSORS_SUBFEATURE_IN_INPUT },
 	{ "min", SENSORS_SUBFEATURE_IN_MIN },
 	{ "max", SENSORS_SUBFEATURE_IN_MAX },
+	{ "lcrit", SENSORS_SUBFEATURE_IN_LCRIT },
+	{ "crit", SENSORS_SUBFEATURE_IN_CRIT },
 	{ "alarm", SENSORS_SUBFEATURE_IN_ALARM },
 	{ "min_alarm", SENSORS_SUBFEATURE_IN_MIN_ALARM },
 	{ "max_alarm", SENSORS_SUBFEATURE_IN_MAX_ALARM },
+	{ "lcrit_alarm", SENSORS_SUBFEATURE_IN_LCRIT_ALARM },
+	{ "crit_alarm", SENSORS_SUBFEATURE_IN_CRIT_ALARM },
 	{ "beep", SENSORS_SUBFEATURE_IN_BEEP },
 	{ NULL, 0 }
 };
@@ -247,6 +265,7 @@ static const struct subfeature_type_match fan_matches[] = {
 	{ "input", SENSORS_SUBFEATURE_FAN_INPUT },
 	{ "min", SENSORS_SUBFEATURE_FAN_MIN },
 	{ "div", SENSORS_SUBFEATURE_FAN_DIV },
+	{ "pulses", SENSORS_SUBFEATURE_FAN_PULSES },
 	{ "alarm", SENSORS_SUBFEATURE_FAN_ALARM },
 	{ "fault", SENSORS_SUBFEATURE_FAN_FAULT },
 	{ "beep", SENSORS_SUBFEATURE_FAN_BEEP },
@@ -260,6 +279,14 @@ static const struct subfeature_type_match power_matches[] = {
 	{ "input", SENSORS_SUBFEATURE_POWER_INPUT },
 	{ "input_highest", SENSORS_SUBFEATURE_POWER_INPUT_HIGHEST },
 	{ "input_lowest", SENSORS_SUBFEATURE_POWER_INPUT_LOWEST },
+	{ "cap", SENSORS_SUBFEATURE_POWER_CAP },
+	{ "cap_hyst", SENSORS_SUBFEATURE_POWER_CAP_HYST },
+	{ "cap_alarm", SENSORS_SUBFEATURE_POWER_CAP_ALARM },
+	{ "alarm", SENSORS_SUBFEATURE_POWER_ALARM },
+	{ "max", SENSORS_SUBFEATURE_POWER_MAX },
+	{ "max_alarm", SENSORS_SUBFEATURE_POWER_MAX_ALARM },
+	{ "crit", SENSORS_SUBFEATURE_POWER_CRIT },
+	{ "crit_alarm", SENSORS_SUBFEATURE_POWER_CRIT_ALARM },
 	{ "average_interval", SENSORS_SUBFEATURE_POWER_AVERAGE_INTERVAL },
 	{ NULL, 0 }
 };
@@ -273,10 +300,19 @@ static const struct subfeature_type_match curr_matches[] = {
 	{ "input", SENSORS_SUBFEATURE_CURR_INPUT },
 	{ "min", SENSORS_SUBFEATURE_CURR_MIN },
 	{ "max", SENSORS_SUBFEATURE_CURR_MAX },
+	{ "lcrit", SENSORS_SUBFEATURE_CURR_LCRIT },
+	{ "crit", SENSORS_SUBFEATURE_CURR_CRIT },
 	{ "alarm", SENSORS_SUBFEATURE_CURR_ALARM },
 	{ "min_alarm", SENSORS_SUBFEATURE_CURR_MIN_ALARM },
 	{ "max_alarm", SENSORS_SUBFEATURE_CURR_MAX_ALARM },
+	{ "lcrit_alarm", SENSORS_SUBFEATURE_CURR_LCRIT_ALARM },
+	{ "crit_alarm", SENSORS_SUBFEATURE_CURR_CRIT_ALARM },
 	{ "beep", SENSORS_SUBFEATURE_CURR_BEEP },
+	{ NULL, 0 }
+};
+
+static const struct subfeature_type_match humidity_matches[] = {
+	{ "input", SENSORS_SUBFEATURE_HUMIDITY_INPUT },
 	{ NULL, 0 }
 };
 
@@ -285,6 +321,11 @@ static const struct subfeature_type_match cpu_matches[] = {
 	{ NULL, 0 }
 };
 
+static const struct subfeature_type_match intrusion_matches[] = {
+	{ "alarm", SENSORS_SUBFEATURE_INTRUSION_ALARM },
+	{ "beep", SENSORS_SUBFEATURE_INTRUSION_BEEP },
+	{ NULL, 0 }
+};
 static struct feature_type_match matches[] = {
 	{ "temp%d%c", temp_matches },
 	{ "in%d%c", in_matches },
@@ -293,6 +334,8 @@ static struct feature_type_match matches[] = {
 	{ "power%d%c", power_matches },
 	{ "curr%d%c", curr_matches },
 	{ "energy%d%c", energy_matches },
+	{ "intrusion%d%c", intrusion_matches },
+	{ "humidity%d%c", humidity_matches },
 };
 
 /* Return the subfeature type and channel number based on the subfeature
@@ -326,6 +369,33 @@ sensors_subfeature_type sensors_subfeature_get_type(const char *name, int *nr)
 	return SENSORS_SUBFEATURE_UNKNOWN;
 }
 
+static int sensors_compute_max(void)
+{
+	int i, j, max, offset;
+	const struct subfeature_type_match *submatches;
+	sensors_feature_type ftype;
+
+	max = 0;
+	for (i = 0; i < ARRAY_SIZE(matches); i++) {
+		submatches = matches[i].submatches;
+		for (j = 0; submatches[j].name != NULL; j++) {
+			ftype = submatches[j].type >> 8;
+
+			if (ftype < SENSORS_FEATURE_VID) {
+				offset = submatches[j].type & 0x7F;
+				if (offset >= max)
+					max = offset + 1;
+			} else {
+				offset = submatches[j].type & 0xFF;
+				if (offset >= max * 2)
+					max = ((offset + 1) + 1) / 2;
+			}
+		}
+	}
+
+	return max;
+}
+
 static int sensors_get_attr_mode(const char *device, const char *attr)
 {
 	char path[NAME_MAX];
@@ -346,6 +416,7 @@ static int sensors_read_dynamic_chip(sensors_chip_features *chip,
 				     const char *dev_path)
 {
 	int i, fnum = 0, sfnum = 0, prev_slot;
+	static int max_subfeatures;
 	DIR *dir;
 	struct dirent *ent;
 	sensors_subfeature *all_subfeatures;
@@ -356,6 +427,10 @@ static int sensors_read_dynamic_chip(sensors_chip_features *chip,
 
 	if (!(dir = opendir(dev_path)))
 		return -errno;
+
+	/* Dynamically figure out the max number of subfeatures */
+	if (!max_subfeatures)
+		max_subfeatures = sensors_compute_max();
 
 	/* We use a large sparse table at first to store all found
 	   subfeatures, so that we can store them sorted at type and index
@@ -378,15 +453,19 @@ static int sensors_read_dynamic_chip(sensors_chip_features *chip,
 		sftype = sensors_subfeature_get_type(name, &nr);
 		if (sftype == SENSORS_SUBFEATURE_UNKNOWN)
 			continue;
+		ftype = sftype >> 8;
 
 		/* Adjust the channel number */
-		switch (sftype & 0xFF00) {
-		case SENSORS_SUBFEATURE_FAN_INPUT:
-		case SENSORS_SUBFEATURE_TEMP_INPUT:
-		case SENSORS_SUBFEATURE_POWER_AVERAGE:
-		case SENSORS_SUBFEATURE_ENERGY_INPUT:
-		case SENSORS_SUBFEATURE_CURR_INPUT:
+		switch (ftype) {
+		case SENSORS_FEATURE_FAN:
+		case SENSORS_FEATURE_TEMP:
+		case SENSORS_FEATURE_POWER:
+		case SENSORS_FEATURE_ENERGY:
+		case SENSORS_FEATURE_CURR:
+		case SENSORS_FEATURE_HUMIDITY:
 			nr--;
+			break;
+		default:
 			break;
 		}
 
@@ -402,19 +481,21 @@ static int sensors_read_dynamic_chip(sensors_chip_features *chip,
 
 		/* "calculate" a place to store the subfeature in our sparse,
 		   sorted table */
-		switch (sftype) {
-		case SENSORS_SUBFEATURE_VID:
-			i = nr + MAX_SENSORS_PER_TYPE * MAX_SUBFEATURES *
-			    MAX_SENSOR_TYPES * 2;
+		switch (ftype) {
+		case SENSORS_FEATURE_VID:
+		case SENSORS_FEATURE_INTRUSION:
+			i = SUB_OFFSET_OTHER +
+			    (ftype - SENSORS_FEATURE_VID) * FEATURE_TYPE_SIZE +
+			    nr * FEATURE_SIZE + (sftype & 0xFF);
 			break;
-		case SENSORS_SUBFEATURE_BEEP_ENABLE:
-			i = MAX_SENSORS_PER_TYPE * MAX_SUBFEATURES *
-			    MAX_SENSOR_TYPES * 2 + MAX_SENSORS_PER_TYPE;
+		case SENSORS_FEATURE_BEEP_ENABLE:
+			i = SUB_OFFSET_MISC +
+			    (ftype - SENSORS_FEATURE_BEEP_ENABLE);
 			break;
 		default:
-			i = (sftype >> 8) * MAX_SENSORS_PER_TYPE *
-			    MAX_SUBFEATURES * 2 + nr * MAX_SUBFEATURES * 2 +
-			    ((sftype & 0x80) >> 7) * MAX_SUBFEATURES +
+			i = ftype * FEATURE_TYPE_SIZE +
+			    nr * FEATURE_SIZE +
+			    ((sftype & 0x80) >> 7) * max_subfeatures +
 			    (sftype & 0x7F);
 		}
 
@@ -431,7 +512,8 @@ static int sensors_read_dynamic_chip(sensors_chip_features *chip,
 		if (!all_subfeatures[i].name)
 			sensors_fatal_error(__func__, "Out of memory");
 
-		if (!(sftype & 0x80))
+		/* Other and misc subfeatures are never scaled */
+		if (sftype < SENSORS_SUBFEATURE_VID && !(sftype & 0x80))
 			all_subfeatures[i].flags |= SENSORS_COMPUTE_MAPPING;
 		all_subfeatures[i].flags |= sensors_get_attr_mode(dev_path, name);
 
@@ -450,11 +532,9 @@ static int sensors_read_dynamic_chip(sensors_chip_features *chip,
 		if (!all_subfeatures[i].name)
 			continue;
 
-		if (i >= MAX_SENSORS_PER_TYPE * MAX_SUBFEATURES *
-		    MAX_SENSOR_TYPES * 2 ||
-		    i / (MAX_SUBFEATURES * 2) != prev_slot) {
+		if (i >= SUB_OFFSET_MISC || i / FEATURE_SIZE != prev_slot) {
 			fnum++;
-			prev_slot = i / (MAX_SUBFEATURES * 2);
+			prev_slot = i / FEATURE_SIZE;
 		}
 	}
 
@@ -472,12 +552,10 @@ static int sensors_read_dynamic_chip(sensors_chip_features *chip,
 			continue;
 
 		/* New main feature? */
-		if (i >= MAX_SENSORS_PER_TYPE * MAX_SUBFEATURES *
-		    MAX_SENSOR_TYPES * 2 ||
-		    i / (MAX_SUBFEATURES * 2) != prev_slot) {
+		if (i >= SUB_OFFSET_MISC || i / FEATURE_SIZE != prev_slot) {
 			ftype = all_subfeatures[i].type >> 8;
 			fnum++;
-			prev_slot = i / (MAX_SUBFEATURES * 2);
+			prev_slot = i / FEATURE_SIZE;
 
 			dyn_features[fnum].name = get_feature_name(ftype,
 						all_subfeatures[i].name);

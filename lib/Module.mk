@@ -33,7 +33,7 @@ LIBMAN5FILES := $(MODULE_DIR)/sensors.conf.5
 # changed in a backward incompatible way.  The interface is defined by
 # the public header files - in this case they are error.h and sensors.h.
 LIBMAINVER := 4
-LIBMINORVER := 3.0
+LIBMINORVER := 3.1
 LIBVER := $(LIBMAINVER).$(LIBMINORVER)
 
 # The static lib name, the shared lib name, and the internal ('so') name of
@@ -63,7 +63,7 @@ LIBHEADERFILES := $(MODULE_DIR)/error.h $(MODULE_DIR)/sensors.h
 
 # How to create the shared library
 $(MODULE_DIR)/$(LIBSHLIBNAME): $(LIBSHOBJECTS)
-	$(CC) -shared $(LDFLAGS) -Wl,-soname,$(LIBSHSONAME) -o $@ $^ -lc -lm
+	$(CC) -shared $(LDFLAGS) -Wl,--version-script=$(LIB_DIR)/libsensors.map -Wl,-soname,$(LIBSHSONAME) -o $@ $^ -lc -lm
 
 $(MODULE_DIR)/$(LIBSHSONAME): $(MODULE_DIR)/$(LIBSHLIBNAME)
 	$(RM) $@
