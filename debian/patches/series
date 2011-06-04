@@ -10,3 +10,4 @@
 10-pwmconfig.diff
 11-fancontrol-check.patch
 12-upstream-patches.patch
+13-udev-run.patch
