@@ -2,7 +2,14 @@
 # This is fairly complicated since it can be called either to build the
 # source package, or to build a kernel module package.
 
+# Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
+
+# These are used for cross-compiling and for saving the configure script
+# from having to guess our platform (since we know it already)
+DEB_HOST_GNU_TYPE   ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
+DEB_BUILD_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
+DEB_HOST_MULTIARCH  ?= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
 
 clean:
 	dh_testdir
@@ -13,20 +20,25 @@ clean:
 	rm -f *-stamp
 	dh_clean 
 
+build: build-arch build-indep
 
-# Build everything that goes into the Debian package.  Use recursive make
-# invocations to build all of the interesting components.
-build: build-stamp
-build-stamp:
+build-arch: build-arch-stamp
+build-arch-stamp:
 	dh_testdir
 
 	# binary programs and librairies
 	$(MAKE) user \
 		PREFIX=/usr \
+		LIBDIR=/usr/lib/$(DEB_HOST_MULTIARCH) \
 		PROG_EXTRA=sensord \
 		EXLDFLAGS=""
 
-	touch build-stamp
+	touch $@
+
+build-indep: build-indep-stamp
+build-indep-stamp:
+	dh_testdir 
+	touch $@
 
 install: install-stamp
 install-stamp: build
@@ -38,6 +50,7 @@ install-stamp: build
 	$(MAKE) user_install \
 		DESTDIR=$(CURDIR)/debian/tmp \
 		PREFIX=/usr \
+		LIBDIR=/usr/lib/$(DEB_HOST_MULTIARCH) \
 		MANDIR=/usr/share/man \
 		PROG_EXTRA=sensord \
 		EXLDFLAGS=""
