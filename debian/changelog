@@ -1,3 +1,13 @@
+lm-sensors-legacy-libsensors4 (1:3.4.0-4ubuntu0.1+legacy1) UNRELEASED; urgency=medium
+
+  * Rebuild legacy libsensors4 runtime package.
+  * Rename source package to avoid conflicting with the lm-sensors source package.
+  * Build only the legacy libsensors4 binary package.
+  * Rename binary package to libsensors4-legacy to avoid package
+    relationship conflicts.
+
+ -- Reaper <JohnGrimmReaper@disroot.org>  Thu, 18 Jun 2026 02:17:19 +0000
+
 lm-sensors (1:3.4.0-4ubuntu0.1) bionic; urgency=medium
 
   * d/fancontrol-systemd-sleep, d/rules: Restart fancontrol.service

@@ -1,60 +1,29 @@
 #!/usr/bin/make -f
 
 %:
-	dh $@ --parallel --with systemd
+	dh $@ --parallel
 
-MAKEARGS_INDP = DESTDIR=$(CURDIR)/debian/tmp \
-		PREFIX=/usr \
-		LIBDIR=/usr/lib/$(DEB_HOST_MULTIARCH) \
-		MANDIR=/usr/share/man
-MAKEARGS_ARCH = $(MAKEARGS_INDP) \
-		CFLAGS="$(CFLAGS)" \
-		CPPFLAGS="$(CPPFLAGS)" \
-		LDFLAGS="$(LDFLAGS)" \
-		EXLDFLAGS="$(LDFLAGS)"
+MAKEARGS = DESTDIR=$(CURDIR)/debian/tmp \
+           PREFIX=/usr \
+           LIBDIR=/usr/lib/$(DEB_HOST_MULTIARCH) \
+           MANDIR=/usr/share/man \
+           CFLAGS="$(CFLAGS)" \
+           CPPFLAGS="$(CPPFLAGS)" \
+           LDFLAGS="$(LDFLAGS)" \
+           EXLDFLAGS="$(LDFLAGS)"
 
 override_dh_auto_clean:
-	dh_auto_clean -- $(MAKEARGS_ARCH)
+	dh_auto_clean -- $(MAKEARGS)
 
+override_dh_auto_build:
+	dh_auto_build -- $(MAKEARGS)
 
-#
-# Architecture independent targets
-#
-override_dh_auto_build-indep:
-
-override_dh_auto_install-indep:
-	$(MAKE) install-prog-pwm $(MAKEARGS_INDP)
-	mkdir -p $(CURDIR)/debian/fancontrol/lib/systemd/system-sleep/
-	install -m 755 $(CURDIR)/debian/fancontrol-systemd-sleep $(CURDIR)/debian/fancontrol/lib/systemd/system-sleep/fancontrol
-
-override_dh_installinit-indep:
-	dh_installinit -pfancontrol --restart-after-upgrade
-
-
-#
-# Architecture targets
-#
-override_dh_auto_build-arch:
-	dh_auto_build -- $(MAKEARGS_ARCH)
-
-override_dh_auto_install-arch:
-	dh_auto_install -- $(MAKEARGS_ARCH)
-
-	# Make sure /etc/sensors.d/ is not removed
-	touch $(CURDIR)/debian/tmp/etc/sensors.d/.placeholder
-
-	# Install isadump only if it has been built (on x86/x86_64 archs only)
-	if [ -x prog/dump/isadump ] ; then \
-		cp -f prog/dump/isadump $(CURDIR)/debian/lm-sensors/usr/sbin ; \
-		mkdir -p $(CURDIR)/debian/lm-sensors/usr/share/man/man8 ; \
-		cp -f prog/dump/isadump.8 $(CURDIR)/debian/lm-sensors/usr/share/man/man8 ; \
-	fi
-	# Install isaset only if it has been built (on x86/x86_64 archs only)
-	if [ -x prog/dump/isaset ] ; then \
-		cp -f prog/dump/isaset $(CURDIR)/debian/lm-sensors/usr/sbin ; \
-		mkdir -p $(CURDIR)/debian/lm-sensors/usr/share/man/man8 ; \
-		cp -f prog/dump/isaset.8 $(CURDIR)/debian/lm-sensors/usr/share/man/man8 ; \
-	fi
-
-override_dh_installinit-arch:
-	dh_installinit -plm-sensors --no-start
+override_dh_auto_install:
+	dh_auto_install -- $(MAKEARGS)
+	rm -rf $(CURDIR)/debian/tmp/etc
+	rm -rf $(CURDIR)/debian/tmp/usr/bin
+	rm -rf $(CURDIR)/debian/tmp/usr/sbin
+	rm -rf $(CURDIR)/debian/tmp/usr/include
+	rm -rf $(CURDIR)/debian/tmp/usr/share/man
+	rm -f $(CURDIR)/debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/libsensors.a
+	rm -f $(CURDIR)/debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/libsensors.so
