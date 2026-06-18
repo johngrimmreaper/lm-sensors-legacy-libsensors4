@@ -24,6 +24,8 @@ override_dh_auto_build-indep:
 
 override_dh_auto_install-indep:
 	$(MAKE) install-prog-pwm $(MAKEARGS_INDP)
+	mkdir -p $(CURDIR)/debian/fancontrol/lib/systemd/system-sleep/
+	install -m 755 $(CURDIR)/debian/fancontrol-systemd-sleep $(CURDIR)/debian/fancontrol/lib/systemd/system-sleep/fancontrol
 
 override_dh_installinit-indep:
 	dh_installinit -pfancontrol --restart-after-upgrade
